@@ -15,18 +15,39 @@
 本项目的原始模型为WeNet模型的变种——3M-ASR，采用conformer+MoE结构，即将conformer的feed_forward结构替换成fast_moe结构，得益于MoE带来的模型容量提升，模型效果相比于原始conformer模型有了显著提升。
 1）	用途以及效果：目前3M-ASR模型被应用于端到端的语音识别系统上，得益于FastMoE结构，不同专家处理不同token，对于多语种样本（例如粤语混合普通话），识别效果相比baseline具有显著提升
 2）	业界运用情况：内部识别业务在用
-3）	模型整体结构：模型整体结构采用conformer+moe，将conformer block中的feed_forward（一个FFN），替换为fast_moe结构（32个FFN），具体每个token由哪个FFN（专家）处理，由分发器（Gating）来控制。引入fast_moe结构结构后，token根据匹配度分发给不同的专家处理，模型学习到的参数更有代表性。
+3）	模型整体结构：模型整体结构采用conformer+moe，将conformer block中的feed_forward（一个FFN），替换为fast_moe结构（32个FFN），具体每个token由哪个FFN（专家）处理，由分发器（Gating）来控制。引入fast_moe结构结构后，token根据匹配度分发给不同的专家处理，模型学习到的参数更有代表性。fast_moe的结构详细见 https://github.com/laekov/fastmoe
 
 ### 2、	模型优化难点
-由于引入了MoE结构，MoE结构是pytorch cuda extension实现的，不像普通的算子可以方便地通过PyTorch->ONNX->TensorRT模型转换的工作流来转换，且工具转换由于多了ONNX中间商，生成的ONNX格式的conformer模型结构非常复杂，不利于后续的优化，因此需要采用TRT python api+plugin的方式来构建trt模型（与TensorRT自带的demo/BERT类似），这样才能进行模型构建和有针对性的优化。
+由于引入了MoE结构，MoE结构是pytorch cuda extension实现的，不像普通的算子可以方便地通过PyTorch->ONNX->TensorRT模型转换的工作流来转换，且工具转换由于多了ONNX中间商，生成的ONNX格式的conformer模型结构非常复杂，不利于后续的深度优化，因此我们需要采用TRT python api+plugin的方式来构建trt模型（与TensorRT自带的demo/BERT类似），这样才能进行模型构建和有针对性的优化。
 除此以外，在将feed_forward（一个FFN），替换为fast_moe结构（32个FFN）后，fast_moe层的参数量相比于普通feed_forward层增加了31倍，与此同时本项目模型具有18层fast_moe，导致模型的参数量非常大，需要对显存使用进行大量优化，同时32层FFN并行计算，需要对stream、cublas_handle等资源也要进行合理分配和优化。
 综上，模型优化难点主要概括为以下两点：
-1）	模型转换：工具转换困难，需要采用TRT python api+plugin的方式来手动构建trt模型。
-2）	资源占用优化：在使用plugin实现fast_moe时，由于模型参数量巨大，导致显存消耗很大，需要对整个模型进行显存资源占用优化
+1）	模型转换：需要采用TRT python api+plugin的方式来手动构建trt模型。而模型结构异常复杂+TRT API使用难度较高，导致转换过程工作量较大，效率低下。
+2）	资源占用优化：在使用plugin实现fast_moe时，由于模型参数量巨大，显存不够用，导致build失败。需要对整个模型进行显存资源占用优化
 
 ## 三、	优化过程
 ### 1、	使用TensorRT python api搭建trt支持的模型部分
-首先使用TensorRT python api搭建trt模型，由于TensorRT python api提供的接口具有较强的泛化性，一个api接口往往可以实现很多种算子，在简化api的同时也提高了使用api搭建模型的难度，
+首先使用TensorRT python api搭建trt模型。
+常见的TRT python api构建方式如TensorRT OOS BERT demo所示，构建流程为：读取ONNX/PyTorch/TF 模型权值的name和weight => 根据模型结构，根据name和weight向network中填充相应的算子 => 设置builder_config的参数并构建。
+对于conformer+moe模型，该方法有两个缺点：（1）模型结构复杂算子众多，导致转换代码比较臃肿。如代码1，使用TRT API 填充 Conv层，所示。在conformer模型中，subsample和conv module结构中都有conv层，代码1就要写多遍。（2）业务迭代中，模型结构会经常发生小改动
+
+代码1： 使用TRT API 填充 Conv层
+```
+weight = trt.Weights(self.conv_0.weight.detach().numpy())
+bias = trt.Weights(self.conv_0.bias.detach().numpy()) if not self.conv_0.bias is None else None
+
+trt_layer = network.add_convolution_nd(
+
+x, num_output_maps=self.conv_0.out_channels,
+kernel_shape=(1, self.conv_0.kernel_size[0]),
+kernel=weight, bias=bias)
+
+trt_layer.stride = (1, self.conv_0.stride[0])
+trt_layer.padding = (0, self.conv_0.padding[0])
+trt_layer.dilation = (1, self.conv_0.dilation[0])
+trt_layer.num_groups = self.conv_0.groups
+```
+
+由于TensorRT python api提供的接口具有较强的泛化性，一个api接口往往可以实现很多种算子，在简化api的同时也提高了使用api搭建模型的难度，
 
 因此，我们使用了自己研发的项目TensorRT API++，该工具目标是提高使用TensorRT API 构建模型的效率。目前正在内部使用，后续项目成熟时提供开源。
 
