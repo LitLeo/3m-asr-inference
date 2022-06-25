@@ -28,7 +28,10 @@
 ### 1、	使用TensorRT python api搭建trt支持的模型部分
 首先使用TensorRT python api搭建trt模型。
 常见的TRT python api构建方式如TensorRT OOS BERT demo所示，构建流程为：读取ONNX/PyTorch/TF 模型权值的name和weight => 根据模型结构，根据name和weight向network中填充相应的算子 => 设置builder_config的参数并构建。
-对于conformer+moe模型，该方法有两个缺点：（1）模型结构复杂算子众多，导致转换代码比较臃肿。如代码1，使用TRT API 填充 Conv层，所示。在conformer模型中，subsample和conv module结构中都有conv层，代码1就要写多遍。（2）业务迭代中，模型结构会经常发生小改动
+对于conformer+moe模型，该方法有两个缺点：（1）模型结构复杂算子众多，导致转换代码比较臃肿。如代码1，使用TRT API 填充 Conv层，所示。在conformer模型中，subsample和conv module结构中都有conv层，代码1就要写多遍。（2）业务迭代中，模型结构会根据配置发生更改，转换代码就需要及时维护更新。
+针对以上问题，我提出了一种新的TRT api 构建模型的方式，两步：（1）将TRT api进行封装，向pytorch api看齐；（2）直接复用pytorch训练代码。废话不多说，直接上代码就理解了。选择conformer模型中PositionwiseFeedForward作为例子，代码2为训练代码，代码3 为trt api转换代码。
+
+封装trt api可以提高编写转换代码的效率；复用pytorch训练代码可以提高代码的可维护性。
 
 代码1： 使用TRT API 填充 Conv层
 ```
@@ -47,14 +50,51 @@ trt_layer.dilation = (1, self.conv_0.dilation[0])
 trt_layer.num_groups = self.conv_0.groups
 ```
 
-由于TensorRT python api提供的接口具有较强的泛化性，一个api接口往往可以实现很多种算子，在简化api的同时也提高了使用api搭建模型的难度，
+代码2 PositionwiseFeedForward 训练代码 
+```python
+class PositionwiseFeedForward(torch.nn.Module):
+    def __init__(self,
+                 idim: int,
+                 hidden_units: int,
+                 dropout_rate: float,
+                 activation: torch.nn.Module = torch.nn.ReLU()):
+        """Construct a PositionwiseFeedForward object."""
+        super(PositionwiseFeedForward, self).__init__()
+        self.w_1 = torch.nn.Linear(idim, hidden_units)
+        self.activation = activation
+        self.dropout = torch.nn.Dropout(dropout_rate)
+        self.w_2 = torch.nn.Linear(hidden_units, idim)
 
-因此，我们使用了自己研发的项目TensorRT API++，该工具目标是提高使用TensorRT API 构建模型的效率。目前正在内部使用，后续项目成熟时提供开源。
+    def forward(self, xs: torch.Tensor) -> torch.Tensor:
+        """Forward function.
+
+        Args:
+            xs: input tensor (B, L, D)
+        Returns:
+            output tensor, (B, L, D)
+        """
+        return self.w_2(self.dropout(self.activation(self.w_1(xs))))
+```
+
+代码3 PositionwiseFeedForward trt api 转换代码
+```
+... 构造函数与训练代码相同
+def forward(self, network_helper, xs):
+    xs = network_helper.addLinear(self.w_1, xs)
+    # Swish ＝ x*sigmod(x)
+    xs = network_helper.addSiLU(xs)
+    xs = network_helper.addLinear(self.w_2, xs)
+
+    return xs
+
+```
+
+这个trt api 封装项目暂时叫TensorRT API++（欢迎大家推荐新名字），该工具目标是提高使用TensorRT API 构建模型的效率。目前正在内部使用，后续项目成熟时提供开源。
 
 该工具将TensorRT Python API进行封装，提高其易用性，进而提高模型转换效率。具体地，（1）对TensorRT Python API进行封装，向PyTorch的算子API格式对齐，降低使用难度；（2）编写和收集Plugin算子集合，并提出了一种简单的、无需CUDA技能的Plugin编写方式，用于解决部分TensorRT API无法支持的PyTorch算子。
 
 以torch.nn.Conv1d算子举例，
-模型代码如下：
+代码3， Conv1d算子模型代码如下：
 ```python
 class Model(nn.Module):
     def __init__(self):
@@ -66,28 +106,13 @@ class Model(nn.Module):
         return x
 ```
 
-直接调用TRT python api 构建模型的代码如下：
-```python
-weight = trt.Weights(self.conv_0.weight.detach().numpy())
-bias = trt.Weights(self.conv_0.bias.detach().numpy()) if not self.conv_0.bias is None else None
+直接调用TRT python api 构建模型如上面的代码1，
+使用trt_helper api，只需要一行代码：
 
-trt_layer = network.add_convolution_nd(
-
-x, num_output_maps=self.conv_0.out_channels,
-kernel_shape=(1, self.conv_0.kernel_size[0]),
-kernel=weight, bias=bias)
-
-trt_layer.stride = (1, self.conv_0.stride[0])
-trt_layer.padding = (0, self.conv_0.padding[0])
-trt_layer.dilation = (1, self.conv_0.dilation[0])
-trt_layer.num_groups = self.conv_0.groups
-```
-
-使用trt_helper api，代码如下：
+代码4 使用trt_helper api 构建conv 层
 ```python
 x = network_helper.addConv1d(self.conv_0, x, "conv_0")
 ```
-
 
 ### 2、	自定义plugin实现trt不支持的部分
 本部分主要涉及算子优化
@@ -97,8 +122,9 @@ plugin的编写过程没什么难度，就是正常cuda stream编程。
 出现最大的问题是显存不够用，T4显卡15G显存，build_engine过程中一直报错显存不够，缩小max_shape也不够。
 ##### 1) **经过单步调试发现，在填充网络过程中，显存占用一直在增大**
 这个不正常，debug发现是trt7之后函数调用顺序+plugin编写方式导致。详细分析如下：
-1. TensorRT-OSS 中提供的plugin（如embLayerNormPlugin， fcPlugin），资源（显存，句柄等）申请，自7.x之后，是放到了构造函数中。7.x之前我记得是放到initialize()函数中。比如如embLayerNormPlugin的构造函数如下，copyToDevice函数即申请显存并copy权值。
+1. TensorRT-OSS 中提供的plugin（如embLayerNormPlugin， fcPlugin），资源（显存，句柄等）申请，自7.x之后，是放到了构造函数中。7.x之前我记得是放到initialize()函数中。比如代码5所示，embLayerNormPlugin的构造函数，copyToDevice函数即申请显存并copy权值。
 
+代码5 embLayerNormPlugin的构造函数
 ```
 EmbLayerNormVarSeqlenPluginBase::EmbLayerNormVarSeqlenPluginBase(std::string const& name, DataType const type,
     Weights const& beta, Weights const& gamma, Weights const& wordEmb, Weights const& posEmb, Weights const& tokEmb)
@@ -157,13 +183,13 @@ build阶段和infer阶段，trt plugin各个函数调用顺序如下
 ```
 
   - 发现的问题
-1. plugin中申请的资源，期望在build or infer阶段中，只保留一份。
+1. plugin中申请的资源，期望在build or infer阶段中，只保留一份，否则就是浪费。
 2. 资源申请是放到了构造函数中，每clone一个plugin类，就会申请一份资源。
 3. 根据上述函数调用顺序可以发现，在build阶段，第11步 destroy之前，内存中存有四份资源。
 
   - 可能导致的严重后果
 1. trt在build阶段，对显存的消耗本来就比较大。
-2. 以我所做的一个AI大模型为例，某一个层的权值共32M，共有18层。那么会多额外占 18 * 32 * 3 = 1728M 显存。
+2. 以我所做的一个3m-asr 32e模型为例，fmoe_expert层有两个矩阵乘，权值大小分别是32x512x1024和32x1024*512, 权值共128M，共有18层。那么会多额外占 18 * 128 * 3 = 6912M 显存。
 3. 目前AI模型越来越大，合并的算子也越来越大，这个问题会愈发明显。
 
   - 尝试解决方案
@@ -171,7 +197,6 @@ build阶段和infer阶段，trt plugin各个函数调用顺序如下
 
 ##### 2) **将权值以输入的形式送入后，发现填充网络过程中，显存还是会增长。**
 继续debug发现，是在构造函数中初始化了cuda stream，cudaStreamCreate会申请显存，同样会存在上面浪费显存的问题。但cuda stream又不能以输入的形式送入。且trt plugin函数的调用顺序要求，资源必须在构造函数中申请(资源申请放到initialize里的话，infer阶段会在initialize后又clone一次……)
-
 
 最终想到的折中解决方案是写三个构造函数，一个createPlugin时调用，一个clone时调用，一个deserialize时调用，资源申请放到一三中。将cuda stream等资源在clone时以参数的形式进行共享。
 
