@@ -30,3 +30,6 @@
 *.exe
 *.out
 *.app
+
+conformer_moe_18l/
+*.plan
