@@ -244,7 +244,7 @@ return self.dropout(x), self.dropout(pos_emb)
 ```
 这里为了省事，合并成一个算子。
 
-四、	精度与加速效果
+## 四、	精度与加速效果
 还未进行FP16和INT8加速，但所有算子均支持FP16计算，并通过单元测试验证。
 本质上还是WeNet模型，fp16和int8做起来不简单，还没来得及做。
 
@@ -280,10 +280,10 @@ print('TensorRT time:', time_trt)
 
 PS：pytorch time并没有随着输入数据量的增加而明显增大，感觉是有问题，待探究。
 
-五、	Bug报告
+## 五、	Bug报告
 https://github.com/NVIDIA/trt-samples-for-hackathon-cn/issues/32
 
-六、 补充
+## 六、 补充
 这个项目还有bug，目前的特征是
 1. trainer_3m_fix/layer/positionwise_feed_forward.py gate_trt函数，softmax和topk算子。
 2. trt会把算子合并在一起。这个时候结果是nan
