@@ -1,6 +1,6 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) 
 
-# Human-TensorRT
+# TensorRT API ++
 提高TensorRT使用效率的工具。
 主要对两类开发者友好，
 1. 不熟悉TRT，且使用现有TRT转换框架无法成功转换的开发者，比如算法人员和后台开发人员；
@@ -11,7 +11,7 @@
 
 为了解决以上问题，做了一些工作,包含两大部分，Torch-TensorRT-Plugin和TensorRT-Helper python api.
 
-## Torch-TensorRT-Plugin
+## TensorRT-Plugin ++
 目的是实现TensorRT中不支持的Torch算子。用于解决因算子不支持导致现有TRT转换框架失败的问题。
 
 ### Build
@@ -31,7 +31,7 @@ To build this project, you will first need the following software packages.
 * cmake >= v3.13
 
 
-## TensorRT-Helper python api
+## TensorRT-Helper Python API
 对TensorRT python api进行封装，与Torch 算子格式进行对齐，方便使用API的形式构建TRT模型。
 以torch.nn.Conv1d算子举例，
 模型代码如下：
