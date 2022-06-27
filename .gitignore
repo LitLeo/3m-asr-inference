@@ -34,3 +34,6 @@
 conformer_moe_18l/
 *.plan
 trtexec
+*.pyc
+__pycache__/
+log.txt
