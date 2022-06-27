@@ -8,6 +8,29 @@
 
 3. 优化效果（精度和加速比）：在T4显卡上，输入为206帧的真实语音数据，pytorch float time = 160.5ms, TensorRT float time = 20.44ms, 加速比7.x
 4. Docker里代码的编译、运行步骤：
+``` shell
+# 下载模型
+链接：https://pan.baidu.com/s/18eM3DlYXLWU64cwbb2k7qw?pwd=jwos 
+提取码：jwos
+
+# 下载代码
+git clone git@github.com:LitLeo/3m-asr-inference.git
+cd 3m-asr-inference
+
+# 编译代码
+mkdir TRTAPI++/build && cd TRTAPI++/build 
+cmake -DTRT_INSTALL_DIR=/usr/local/TensorRT-8.4.1.5/ -DCMAKE_BUILD_TYPE=Release -DCUDA_VERSION=11.6
+make -j
+
+# 转换模型
+cd 3m-asr-inference
+修改 builder.sh 中的相应路径
+sh build.sh
+
+# infer测试
+修改 infer.sh 中的相应路径
+sh infer.sh
+```
 
 
 ## 二、	原始模型
@@ -217,7 +240,47 @@ return self.dropout(x), self.dropout(pos_emb)
 
 四、	精度与加速效果
 还未进行FP16和INT8加速，但所有算子均支持FP16计算，并通过单元测试验证。
+本质上还是WeNet模型，fp16和int8做起来不简单，还没来得及做。
 
+```python
+# pytorch 测速代码
+with torch.no_grad():
+    res = model.forward_encoder(feat, feat_len)
+
+loop = 10
+torch.cuda.synchronize()
+t0 = time.time()
+for i in range(loop):
+    res = model.forward_encoder(feat, feat_len)
+torch.cuda.synchronize()
+time_trt = (time.time() - t0) / loop
+print('TensorRT time:', time_trt)
+
+# trt 测速命令
+./trtexec --loadEngine=conformer_embed_fmoe.plan --shapes=feat:1x206x40,feat_len:1x1 --plugins=/data1/wgyang/Torch-TensorRT-Plugin/master/build/out/libtrtplugin++.so
+```
+
+测试环境
+1. NVIDIA Tesla T4
+2. TensorRT 7.2.3
+3. cuda 10.2 + cudnn 8.0
+
+
+| 输入维度 | pytorch float | trt float | 加速比
+| --- | --- | --- | --- | 
+| 1x206x40 | 160.5ms  | 22.44ms | 7.15 |
+| 1x1024x40 | 175.64ms | 39.0854ms | 4.49 | 
+| 1x2048x40 | 185.755ms |  69.6352 ms|  2.6|
+
+PS：pytorch time并没有随着输入数据量的增加而明显增大，感觉是有问题，待探究。
 
 五、	Bug报告
 https://github.com/NVIDIA/trt-samples-for-hackathon-cn/issues/32
+
+六、 补充
+这个项目还有bug，目前的特征是
+1. trainer_3m_fix/layer/positionwise_feed_forward.py gate_trt函数，softmax和topk算子。
+2. trt会把算子合并在一起。这个时候结果是nan
+3. 如果把softmax的结果mark_output，不让这两个算子合并，结果就是正确。非常奇怪。目前采用的是这个方案。
+4. 已经debug了很多天了，把这两个算子单独剥离出来就没问题。
+5. 不确定是trt的bug，还是哪里转换的bug。后者的可能性大一些。
