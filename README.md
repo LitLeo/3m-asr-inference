@@ -6,7 +6,7 @@
 该模型的运行环境搭建稍微麻烦一下，现成模型文件 链接：https://pan.baidu.com/s/18eM3DlYXLWU64cwbb2k7qw?pwd=jwos 
 提取码：jwos
 
-3. 优化效果（精度和加速比）：在T4显卡上，输入为206帧，加速比为
+3. 优化效果（精度和加速比）：在T4显卡上，输入为206帧的真实语音数据，pytorch float time = 160.5ms, TensorRT float time = 20.44ms, 加速比7.x
 4. Docker里代码的编译、运行步骤：
 
 
