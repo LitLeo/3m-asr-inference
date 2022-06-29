@@ -19,7 +19,7 @@ cd 3m-asr-inference
 
 # 编译代码
 mkdir TRTAPI++/build && cd TRTAPI++/build 
-cmake -DTRT_INSTALL_DIR=/usr/local/TensorRT-8.4.1.5/ -DCMAKE_BUILD_TYPE=Release -DCUDA_VERSION=11.6
+cmake -DTRT_INSTALL_DIR=/usr/local/TensorRT-8.4.1.5/ -DCMAKE_BUILD_TYPE=Release -DCUDA_VERSION=11.6 ..
 make -j
 
 # 转换模型
