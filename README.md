@@ -265,7 +265,7 @@ print('TensorRT time:', time_trt)
 # trt 测速命令，使用所安装trt 版本 bin目录下的trtexec 
 # 需要先生成真实的模拟数据，使用data/generate_trtexec_inputs.py 脚本
 # python generate_trtexec_inputs.py B S D 生成维度为[BxSxD]的输入数据
-cd data && python generate_trtexec_inputs.py B S D && cd ..
+cd data && python generate_trtexec_inputs.py 1 206 40 && cd ..
 ./trtexec --loadEngine=conformer_embed_fmoe.plan --shapes=feat:1x206x40,feat_len:1x1 \ 
 --loadInputs='feat':./data/feat.1x206x40.bin,'feat_len':./data/feat_len.1x206x40.bin \
 --plugins=/data1/wgyang/Torch-TensorRT-Plugin/master/build/out/libtrtplugin++.so
