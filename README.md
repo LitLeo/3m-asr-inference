@@ -262,7 +262,7 @@ torch.cuda.synchronize()
 time_trt = (time.time() - t0) / loop
 print('TensorRT time:', time_trt)
 
-# trt 测速命令
+# trt 测速命令，使用所安装trt 版本 bin目录下的trtexec 
 ./trtexec --loadEngine=conformer_embed_fmoe.plan --shapes=feat:1x206x40,feat_len:1x1 --plugins=/data1/wgyang/Torch-TensorRT-Plugin/master/build/out/libtrtplugin++.so
 ```
 
