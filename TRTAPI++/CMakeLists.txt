@@ -257,7 +257,6 @@ message("=======================================================================
 string_status("Build Version"     ${TRT_PLUGIN_VERSION})
 string_status("Build Time"        ${TRT_PLUGIN_BUILD})
 string_status("Build Type"        ${CMAKE_BUILD_TYPE})
-string_status("Build User"        $ENV{USER})
 string_status("CUDA Version"      ${CUDA_VERSION})
 string_status("CUDNN Version"     ${CUDNN_VERSION})
 string_status("Torch Version"     ${Torch_VERSION})
