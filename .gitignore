@@ -42,3 +42,5 @@ logs/
 trainer_3m_fix_bk/
 plugin_bk/
 conformer_moe_18l
+
+*.bin
