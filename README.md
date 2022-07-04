@@ -242,7 +242,7 @@ x = x * self.xscale
 pos_emb = self.pe[:, offset:offset + x.size(1)]                                                                
 return self.dropout(x), self.dropout(pos_emb)
 ```
-这里为了省事，合并成一个算子。
+该结构在转成onnx时，会存在冗余多次计算的问题。使用API可以轻易解决这个问题。这里将以上逻辑合并成一个算子。
 
 ## 四、	精度与加速效果
 还未进行FP16和INT8加速，但所有算子均支持FP16计算，并通过单元测试验证。
