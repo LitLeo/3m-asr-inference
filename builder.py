@@ -60,8 +60,8 @@ def build_trt(model, args, input_dim, plan_name, prior = None):
     max_batch = 1
 
     min_len = 1
-    opt_len = 200
-    max_len = 300
+    opt_len = 500
+    max_len = 3000
 
     min_shape = (min_batch, min_len, input_dim)
     opt_shape = (opt_batch, opt_len, input_dim)
