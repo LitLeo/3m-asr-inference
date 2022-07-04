@@ -37,7 +37,7 @@ int compute_scale(const float* input, float scale, int n, float* output, cudaStr
   scale_kernel<float><<<grid_size, block_size, 0, stream>>>(input, scale, n, output);
   auto ret = cudaPeekAtLastError();
   if (ret != cudaSuccess) {
-    gLogError << "scale_kernel ailed! status = " << cudaGetErrorString(ret) << endl;
+    LOG(ERROR) << "scale_kernel ailed! status = " << cudaGetErrorString(ret) << endl;
     return -1;
   }
   return 0;
@@ -50,7 +50,7 @@ int compute_scale(const half* input, half scale, int n, half* output, cudaStream
   scale_kernel<half><<<grid_size, block_size, 0, stream>>>(input, scale, n, output);
   auto ret = cudaPeekAtLastError();
   if (ret != cudaSuccess) {
-    gLogError << "scale_kernel ailed! status = " << cudaGetErrorString(ret) << endl;
+    LOG(ERROR) << "scale_kernel ailed! status = " << cudaGetErrorString(ret) << endl;
     return -1;
   }
   return 0;
@@ -81,7 +81,7 @@ int compute_rel_positional_encoding(const float* input, const float* pe, const f
       <<<grid_size, block_size, 0, stream>>>(input, pe, scale, x_size, pos_size, output, pos_emb);
   auto ret = cudaPeekAtLastError();
   if (ret != cudaSuccess) {
-    gLogError << "rel_positional_encoding_kernel ailed! status = " << cudaGetErrorString(ret) << endl;
+    LOG(ERROR) << "rel_positional_encoding_kernel ailed! status = " << cudaGetErrorString(ret) << endl;
     return -1;
   }
   return 0;
@@ -100,7 +100,7 @@ int compute_rel_positional_encoding(const half* input, const half* pe, const hal
       <<<grid_size, block_size, 0, stream>>>(input, pe, scale, x_size, pos_size, output, pos_emb);
   auto ret = cudaPeekAtLastError();
   if (ret != cudaSuccess) {
-    gLogError << "rel_positional_encoding_kernel ailed! status = " << cudaGetErrorString(ret) << endl;
+    LOG(ERROR) << "rel_positional_encoding_kernel ailed! status = " << cudaGetErrorString(ret) << endl;
     return -1;
   }
   return 0;
@@ -135,7 +135,7 @@ int compute_rel_positional_encoding_streaming(const float* input, const float* p
       <<<grid_size, block_size, 0, stream>>>(input, pe, frame_num_input, scale, batch, seq_len, dim, output, pos_emb);
   auto ret = cudaPeekAtLastError();
   if (ret != cudaSuccess) {
-    gLogError << "rel_positional_encoding_streaming_kernelf ailed! status = " << cudaGetErrorString(ret) << endl;
+    LOG(ERROR) << "rel_positional_encoding_streaming_kernelf ailed! status = " << cudaGetErrorString(ret) << endl;
     return -1;
   }
   return 0;
@@ -153,7 +153,7 @@ int compute_rel_positional_encoding_streaming(const half* input, const half* pe,
       <<<grid_size, block_size, 0, stream>>>(input, pe, frame_num_input, scale, batch, seq_len, dim, output, pos_emb);
   auto ret = cudaPeekAtLastError();
   if (ret != cudaSuccess) {
-    gLogError << "rel_positional_encoding_streaming_kernelf ailed! status = " << cudaGetErrorString(ret) << endl;
+    LOG(ERROR) << "rel_positional_encoding_streaming_kernelf ailed! status = " << cudaGetErrorString(ret) << endl;
     return -1;
   }
   return 0;

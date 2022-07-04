@@ -210,14 +210,13 @@ class Net(nn.Module):
         xs, pos_emb = self.pos_enc(network_helper, xs)
 
         i = 0
+        # network_helper.markOutput(xs)
         for layer in self.blocks:
             xs, xs_len = layer(network_helper, xs, embed, xs_len, pos_emb)
             # network_helper.markOutput(xs)
-            # if i == 0:
-                # break
+            # if i == 10:
             i = i + 1
-            # xs, aux_loss_macaron, aux_loss, chunk_masks, _ = layer(
-                    # xs, embed, chunk_masks, pos_emb, mask_pad)
+            # break
 
         # xs = network_helper.addDumpTensor(xs, "transformer out")
 

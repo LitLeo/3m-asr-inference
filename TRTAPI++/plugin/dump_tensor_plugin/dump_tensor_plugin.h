@@ -53,10 +53,12 @@ class DumpTensorPlugin : public nvinfer1::IPluginV2DynamicExt {
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs, int nbInputs,
                           const nvinfer1::PluginTensorDesc* outputs, int nbOutputs) const TRTNOEXCEPT override;
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc, const nvinfer1::PluginTensorDesc* outputDesc,
-              const void* const* inputs, void* const* outputs, void* workspace, cudaStream_t stream) TRTNOEXCEPT override;
+              const void* const* inputs, void* const* outputs, void* workspace,
+              cudaStream_t stream) TRTNOEXCEPT override;
 
   // IPluginV2Ext Methods
-  nvinfer1::DataType getOutputDataType(int index, const nvinfer1::DataType* inputTypes, int nbInputs) const TRTNOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index, const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const TRTNOEXCEPT override;
 
   // IPluginV2 Methods
   const char* getPluginType() const TRTNOEXCEPT override;
@@ -77,15 +79,15 @@ class DumpTensorPlugin : public nvinfer1::IPluginV2DynamicExt {
   nvinfer1::DataType data_type_;
   // int dump_tensor_num_;
 
- //protected:
+  // protected:
   //// To prevent compiler warnings.
-  //using nvinfer1::IPluginV2DynamicExt::canBroadcastInputAcrossBatch;
-  //using nvinfer1::IPluginV2DynamicExt::configurePlugin;
-  //using nvinfer1::IPluginV2DynamicExt::enqueue;
-  //using nvinfer1::IPluginV2DynamicExt::getOutputDimensions;
-  //using nvinfer1::IPluginV2DynamicExt::getWorkspaceSize;
-  //using nvinfer1::IPluginV2DynamicExt::isOutputBroadcastAcrossBatch;
-  //using nvinfer1::IPluginV2DynamicExt::supportsFormat;
+  // using nvinfer1::IPluginV2DynamicExt::canBroadcastInputAcrossBatch;
+  // using nvinfer1::IPluginV2DynamicExt::configurePlugin;
+  // using nvinfer1::IPluginV2DynamicExt::enqueue;
+  // using nvinfer1::IPluginV2DynamicExt::getOutputDimensions;
+  // using nvinfer1::IPluginV2DynamicExt::getWorkspaceSize;
+  // using nvinfer1::IPluginV2DynamicExt::isOutputBroadcastAcrossBatch;
+  // using nvinfer1::IPluginV2DynamicExt::supportsFormat;
 };
 
 class DumpTensorPluginCreator : public nvinfer1::IPluginCreator {
@@ -95,7 +97,8 @@ class DumpTensorPluginCreator : public nvinfer1::IPluginCreator {
   const char* getPluginVersion() const TRTNOEXCEPT override;
   const nvinfer1::PluginFieldCollection* getFieldNames() TRTNOEXCEPT override;
   nvinfer1::IPluginV2* createPlugin(const char* name, const nvinfer1::PluginFieldCollection* fc) TRTNOEXCEPT override;
-  nvinfer1::IPluginV2* deserializePlugin(const char* name, const void* serialData, size_t serialLength) TRTNOEXCEPT override;
+  nvinfer1::IPluginV2* deserializePlugin(const char* name, const void* serialData,
+                                         size_t serialLength) TRTNOEXCEPT override;
   void setPluginNamespace(const char* pluginNamespace) TRTNOEXCEPT override;
   const char* getPluginNamespace() const TRTNOEXCEPT override;
 

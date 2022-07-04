@@ -1,3 +1,15 @@
+// Copyright (C) 2022 THL A29 Limited, a Tencent company. All rights reserved.
+//
+// Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
+// in compliance with the License. You may obtain a copy of the License at
+//
+// https://opensource.org/licenses/BSD-3-Clause
+//
+// Unless required by applicable law or agreed to in writing, software distributed
+// under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+// CONDITIONS OF ANY KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations under the License.
+
 #include "att_stream_softmax_plugin.h"
 
 #include <cuda_fp16.h>
@@ -112,12 +124,12 @@ int AttStreamSoftmaxPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     const auto mask_idx = static_cast<const int*>(inputs[2]);
     auto output = static_cast<half*>(outputs[0]);
 
-    //printf("in_ptr=%d, out_ptr = %d\n", input, output);
-    //print_data(input, 10, "input");
-    //print_data(output, 10, "output");
+    // printf("in_ptr=%d, out_ptr = %d\n", input, output);
+    // print_data(input, 10, "input");
+    // print_data(output, 10, "output");
 
-    auto ret = ComputeAttStreamSoftmax(stream, ld, batch, N, scale_, cache_len_,
-                                       decode_frame_num, mask_idx, input, output);
+    auto ret =
+        ComputeAttStreamSoftmax(stream, ld, batch, N, scale_, cache_len_, decode_frame_num, mask_idx, input, output);
     return ret;
   }
 
@@ -125,7 +137,8 @@ int AttStreamSoftmaxPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
 }
 
 nvinfer1::DimsExprs AttStreamSoftmaxPlugin::getOutputDimensions(int outputIndex, const nvinfer1::DimsExprs* inputs,
-                                                                int nbInputs, nvinfer1::IExprBuilder& exprBuilder) TRTNOEXCEPT {
+                                                                int nbInputs,
+                                                                nvinfer1::IExprBuilder& exprBuilder) TRTNOEXCEPT {
   return inputs[0];
 }
 
@@ -133,9 +146,7 @@ nvinfer1::IPluginV2DynamicExt* AttStreamSoftmaxPlugin::clone() const TRTNOEXCEPT
   return new AttStreamSoftmaxPlugin(layer_name_, data_type_, scale_, cache_len_);
 }
 
-void AttStreamSoftmaxPlugin::destroy() TRTNOEXCEPT {
-  delete this;
-}
+void AttStreamSoftmaxPlugin::destroy() TRTNOEXCEPT { delete this; }
 
 const char* AttStreamSoftmaxPlugin::getPluginVersion() const TRTNOEXCEPT { return ATT_STREAM_SOFTMAX_PLUGIN_VERSION; }
 
@@ -156,18 +167,20 @@ void AttStreamSoftmaxPlugin::attachToContext(cudnnContext* cudnn, cublasContext*
 
 const char* AttStreamSoftmaxPluginCreator::getPluginName() const TRTNOEXCEPT { return ATT_STREAM_SOFTMAX_PLUGIN_NAME; }
 
-const char* AttStreamSoftmaxPluginCreator::getPluginVersion() const TRTNOEXCEPT { return ATT_STREAM_SOFTMAX_PLUGIN_VERSION; }
+const char* AttStreamSoftmaxPluginCreator::getPluginVersion() const TRTNOEXCEPT {
+  return ATT_STREAM_SOFTMAX_PLUGIN_VERSION;
+}
 
 const nvinfer1::PluginFieldCollection* AttStreamSoftmaxPluginCreator::getFieldNames() TRTNOEXCEPT {
   std::cerr << "Function not implemented" << std::endl;
   return nullptr;
 }
 
-nvinfer1::IPluginV2DynamicExt* AttStreamSoftmaxPluginCreator::createPlugin(const char* name,
-                                                                           const nvinfer1::PluginFieldCollection* fc) TRTNOEXCEPT {
+nvinfer1::IPluginV2DynamicExt* AttStreamSoftmaxPluginCreator::createPlugin(
+    const char* name, const nvinfer1::PluginFieldCollection* fc) TRTNOEXCEPT {
   assert(fc->nbFields == 3);
 
-  gLogVerbose << "Creating AttStreamSoftmaxPlugin...\n";
+  LOG(INFO) << "Creating AttStreamSoftmaxPlugin...\n";
 
   int data_type_id;
   float scale;
@@ -178,20 +191,20 @@ nvinfer1::IPluginV2DynamicExt* AttStreamSoftmaxPluginCreator::createPlugin(const
 
     if (field_name.compare("data_type") == 0) {
       data_type_id = static_cast<const int*>(fc->fields[i].data)[0];
-      gLogVerbose << "Building data_type_id : " << data_type_id << std::endl;
+      LOG(INFO) << "Building data_type_id : " << data_type_id << std::endl;
     }
     if (field_name.compare("scale") == 0) {
       scale = static_cast<const float*>(fc->fields[i].data)[0];
-      gLogVerbose << "Building scale : " << scale << std::endl;
+      LOG(INFO) << "Building scale : " << scale << std::endl;
     }
     if (field_name.compare("cache_len") == 0) {
       cache_len = static_cast<const int*>(fc->fields[i].data)[0];
-      gLogVerbose << "Building cache_len : " << cache_len << std::endl;
+      LOG(INFO) << "Building cache_len : " << cache_len << std::endl;
     }
   }
 
   if (data_type_id < 0 || data_type_id > 3) {
-    gLogError << "Invalid type id" << data_type_id << std::endl;
+    LOG(ERROR) << "Invalid type id" << data_type_id << std::endl;
     assert(0);
   }
 

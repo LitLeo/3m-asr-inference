@@ -56,12 +56,12 @@ def build_trt(model, args, input_dim, plan_name, prior = None):
     feat_len = network_helper.addInput(name="feat_len", dtype=trt.int32, shape=(1, -1))
 
     min_batch = 1
-    opt_batch = 1
-    max_batch = 1
+    opt_batch = 4
+    max_batch = 6
 
     min_len = 1
     opt_len = 500
-    max_len = 3000
+    max_len = 6100
 
     min_shape = (min_batch, min_len, input_dim)
     opt_shape = (opt_batch, opt_len, input_dim)
@@ -73,6 +73,12 @@ def build_trt(model, args, input_dim, plan_name, prior = None):
     # builder_helper.builder_config.set_flag(trt.BuilderFlag.DEBUG)
 
     res = model.encoder(network_helper, feat, feat_len)
+
+    # # score = F.log_softmax(output, dim=-1).squeeze(0).cpu().data.numpy()
+    # # softmax
+    # res = network_helper.addSoftmax(res, dim=-1)
+    # # log
+    # res = network_helper.addLog(res)
 
     if prior is not None:
         # score = score - np.log(prior)
@@ -92,11 +98,6 @@ def build_trt(model, args, input_dim, plan_name, prior = None):
     print("=======================bindings shape=====================")
 
 def main(args):
-
-    # dist.init_process_group(backend="nccl", init_method="env://")
-    # rank = dist.get_rank()
-    # world_size = dist.get_world_size()
-    # torch.cuda.set_device(args.local_rank)
 
     with open(args.config, 'r') as f:
         configs = yaml.load(f, Loader=yaml.FullLoader)

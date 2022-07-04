@@ -15,8 +15,8 @@
 #include <cuda_fp16.h>
 #include <algorithm>
 
-#include "common.h"
 #include "att_masked_softmax_kernel.h"
+#include "common.h"
 
 using namespace std;
 
@@ -108,7 +108,8 @@ int AttMaskedSoftmaxPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
 }
 
 nvinfer1::DimsExprs AttMaskedSoftmaxPlugin::getOutputDimensions(int outputIndex, const nvinfer1::DimsExprs* inputs,
-                                                                int nbInputs, nvinfer1::IExprBuilder& exprBuilder) TRTNOEXCEPT {
+                                                                int nbInputs,
+                                                                nvinfer1::IExprBuilder& exprBuilder) TRTNOEXCEPT {
   return inputs[0];
 }
 
@@ -116,9 +117,7 @@ nvinfer1::IPluginV2DynamicExt* AttMaskedSoftmaxPlugin::clone() const TRTNOEXCEPT
   return new AttMaskedSoftmaxPlugin(layer_name_, data_type_, scale_);
 }
 
-void AttMaskedSoftmaxPlugin::destroy() TRTNOEXCEPT {
-  delete this;
-}
+void AttMaskedSoftmaxPlugin::destroy() TRTNOEXCEPT { delete this; }
 
 const char* AttMaskedSoftmaxPlugin::getPluginVersion() const TRTNOEXCEPT { return ATT_MASKED_SOFTMAX_PLUGIN_VERSION; }
 
@@ -139,18 +138,20 @@ void AttMaskedSoftmaxPlugin::attachToContext(cudnnContext* cudnn, cublasContext*
 
 const char* AttMaskedSoftmaxPluginCreator::getPluginName() const TRTNOEXCEPT { return ATT_MASKED_SOFTMAX_PLUGIN_NAME; }
 
-const char* AttMaskedSoftmaxPluginCreator::getPluginVersion() const TRTNOEXCEPT { return ATT_MASKED_SOFTMAX_PLUGIN_VERSION; }
+const char* AttMaskedSoftmaxPluginCreator::getPluginVersion() const TRTNOEXCEPT {
+  return ATT_MASKED_SOFTMAX_PLUGIN_VERSION;
+}
 
 const nvinfer1::PluginFieldCollection* AttMaskedSoftmaxPluginCreator::getFieldNames() TRTNOEXCEPT {
   std::cerr << "Function not implemented" << std::endl;
   return nullptr;
 }
 
-nvinfer1::IPluginV2DynamicExt* AttMaskedSoftmaxPluginCreator::createPlugin(const char* name,
-                                                                           const nvinfer1::PluginFieldCollection* fc) TRTNOEXCEPT {
+nvinfer1::IPluginV2DynamicExt* AttMaskedSoftmaxPluginCreator::createPlugin(
+    const char* name, const nvinfer1::PluginFieldCollection* fc) TRTNOEXCEPT {
   assert(fc->nbFields == 2);
 
-  gLogVerbose << "Creating AttMaskedSoftmaxPlugin...\n";
+  LOG(INFO) << "Creating AttMaskedSoftmaxPlugin...\n";
 
   int data_type_id;
   float scale;
@@ -160,16 +161,16 @@ nvinfer1::IPluginV2DynamicExt* AttMaskedSoftmaxPluginCreator::createPlugin(const
 
     if (field_name.compare("data_type") == 0) {
       data_type_id = static_cast<const int*>(fc->fields[i].data)[0];
-      gLogVerbose << "Building data_type_id : " << data_type_id << std::endl;
+      LOG(INFO) << "Building data_type_id : " << data_type_id << std::endl;
     }
     if (field_name.compare("scale") == 0) {
       scale = static_cast<const float*>(fc->fields[i].data)[0];
-      gLogVerbose << "Building scale : " << scale << std::endl;
+      LOG(INFO) << "Building scale : " << scale << std::endl;
     }
   }
 
   if (data_type_id < 0 || data_type_id > 3) {
-    gLogError << "Invalid type id" << data_type_id << std::endl;
+    LOG(ERROR) << "Invalid type id" << data_type_id << std::endl;
     assert(0);
   }
 

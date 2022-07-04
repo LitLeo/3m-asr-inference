@@ -1,26 +1,24 @@
-/*
- * Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (C) 2022 THL A29 Limited, a Tencent company. All rights reserved.
+//
+// Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
+// in compliance with the License. You may obtain a copy of the License at
+//
+// https://opensource.org/licenses/BSD-3-Clause
+//
+// Unless required by applicable law or agreed to in writing, software distributed
+// under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+// CONDITIONS OF ANY KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations under the License.
+
 #include "celu_plugin.h"
 
 #include <cuda_fp16.h>
+
 #include <algorithm>
 #include <vector>
 
-#include <c10/cuda/CUDAGuard.h>
-#include <c10/cuda/CUDAStream.h>
+#include "c10/cuda/CUDAGuard.h"
+#include "c10/cuda/CUDAStream.h"
 #include "torch/script.h"
 #include "torch/torch.h"
 
@@ -86,11 +84,13 @@ int CeluPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc, const nvinf
 
   at::Tensor input, output;
   if (inputDesc->type == DataType::kHALF) {
-    input = at::from_blob((void*)inputs[0], tensor_dims, at::device(at::kCUDA).dtype(torch::kFloat16));
-    output = at::from_blob(outputs[0], tensor_dims, at::device(at::kCUDA).dtype(torch::kFloat16));
+    auto type = at::device(at::kCUDA).dtype(torch::kFloat16);
+    input = at::from_blob(const_cast<void*>(inputs[0]), tensor_dims, type);
+    output = at::from_blob(outputs[0], tensor_dims, type);
   } else {
-    input = at::from_blob((void*)inputs[0], tensor_dims, at::device(at::kCUDA).dtype(torch::kFloat));
-    output = at::from_blob(outputs[0], tensor_dims, at::device(at::kCUDA).dtype(torch::kFloat));
+    auto type = at::device(at::kCUDA).dtype(torch::kFloat);
+    input = at::from_blob(const_cast<void*>(inputs[0]), tensor_dims, type);
+    output = at::from_blob(outputs[0], tensor_dims, type);
   }
 
   c10::cuda::CUDAStream torch_stream = c10::cuda::getStreamFromPool();

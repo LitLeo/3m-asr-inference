@@ -23,32 +23,29 @@
 namespace nvinfer1 {
 namespace plugin {
 
-int ComputeScatterMapping(const int* gate_idx, const int num_expert,
-    const int idx_num, int* mapping, int* acc_histogram, cudaStream_t stream);
+int ComputeScatterMapping(const int* gate_idx, const int num_expert, const int idx_num, int* mapping,
+                          int* acc_histogram, cudaStream_t stream);
 
-int ComputeScatterMappingCopy(const float* input, const int* mapping,
-    const int S, const int dim, float* output, cudaStream_t stream);
+int ComputeScatterMappingCopy(const float* input, const int* mapping, const int S, const int dim, float* output,
+                              cudaStream_t stream);
 
-int ComputeScatterMappingCopy(const half* input, const int* mapping,
-    const int S, const int dim, half* output, cudaStream_t stream);
+int ComputeScatterMappingCopy(const half* input, const int* mapping, const int S, const int dim, half* output,
+                              cudaStream_t stream);
 
-int ComputeBiasSilu(const float* input, const float* bias, const int N, const int dim,
-                 float* output, cudaStream_t stream);
+int ComputeBiasSilu(const float* input, const float* bias, const int N, const int dim, float* output,
+                    cudaStream_t stream);
 
-int ComputeBiasSilu(const half* input, const half* bias, const int N, const int dim,
-                 half* output, cudaStream_t stream);
+int ComputeBiasSilu(const half* input, const half* bias, const int N, const int dim, half* output, cudaStream_t stream);
 
-int ComputeBias(const float* input, const float* bias, const int N, const int dim,
-                 float* output, cudaStream_t stream);
+int ComputeBias(const float* input, const float* bias, const int N, const int dim, float* output, cudaStream_t stream);
 
-int ComputeBias(const half* input, const half* bias, const int N, const int dim,
-                 half* output, cudaStream_t stream);
+int ComputeBias(const half* input, const half* bias, const int N, const int dim, half* output, cudaStream_t stream);
 
-int ComputeGatherrMappingCopy(const float* input, const int* mapping,
-    const int S, const int dim, float* output, cudaStream_t stream);
+int ComputeGatherrMappingCopy(const float* input, const int* mapping, const int S, const int dim, float* output,
+                              cudaStream_t stream);
 
-int ComputeGatherrMappingCopy(const half* input, const int* mapping,
-    const int S, const int dim, half* output, cudaStream_t stream);
+int ComputeGatherrMappingCopy(const half* input, const int* mapping, const int S, const int dim, half* output,
+                              cudaStream_t stream);
 
 }  // namespace plugin
 }  // namespace nvinfer1

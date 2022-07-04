@@ -125,19 +125,3 @@ inline void deserialize_vector(void const** buffer, size_t* buffer_size, std::ve
   return Serializer<std::vector<T>>::deserialize(buffer, buffer_size, value);
 }
 
-// template <typename T>
-// inline void serFromHost(void** buffer, const T* data, size_t nbElem)
-//{
-// const size_t len = sizeof(T) * nbElem;
-// memcpy(buffer, static_cast<const void*>(data), len);
-// buffer += len;
-//}
-
-// template <typename T>
-// inline void devToHost(void** buffer, size_t* buffer_size, T* data, size_t nbElem)
-//{
-// const size_t len = sizeof(T) * nbElem;
-// memcpy(static_cast<void*>(data), buffer, len);
-// buffer += len;
-//*buffer_size += len;
-//}

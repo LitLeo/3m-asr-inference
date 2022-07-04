@@ -24,23 +24,21 @@
 
 #include "NvInferRuntimeCommon.h"
 #include "common.h"
-#include "logger.h"
 
 #include "glu_plugin.h"
 #include "layer_norm_plugin.h"
 //#include "silu_plugin.h"
 
 #ifdef BUILD_LIBTORCH_PLUGINS
-#include "batch_norm_plugin.h"
+//#include "batch_norm_plugin.h"
 #include "celu_plugin.h"
-#include "group_norm_plugin.h"
 #endif  // BUILD_LIBTORCH_PLUGINS
 
 // your self plugin
 #ifdef BUILD_SELF_PLUGINS
 #include "att_masked_softmax_plugin.h"
-#include "att_stream_softmax_plugin.h"
-#include "cat_split_cache_plugin.h"
+//#include "att_stream_softmax_plugin.h"
+//#include "cat_split_cache_plugin.h"
 #include "dump_tensor_plugin.h"
 #include "fmoe_expert_plugin.h"
 #include "mask_conv2d_sample_plugin.h"
@@ -74,9 +72,10 @@ class PluginCreatorRegistry {
     pluginCreator->setPluginNamespace(libNamespace);
 
     auto logger_ptr = static_cast<nvinfer1::ILogger*>(logger);
-    string pluginType = string{pluginCreator->getPluginNamespace()} + "::" +
-                        string{pluginCreator->getPluginName()} + " version " +
-                        string{pluginCreator->getPluginVersion()};
+    string np = string{pluginCreator->getPluginNamespace()};
+    string name = string{pluginCreator->getPluginName()};
+    string version = string{pluginCreator->getPluginVersion()};
+    string pluginType = np + "::" + name + " version " + version;
 
     if (m_registry_list_.find(pluginType) == m_registry_list_.end()) {
       bool status = getPluginRegistry()->registerCreator(*pluginCreator, libNamespace);
@@ -147,14 +146,14 @@ bool init_trt_plugin_plus(void* logger, const char* libNamespace) {
 
 #ifdef BUILD_LIBTORCH_PLUGINS
   initialize_plugin<nvinfer1::plugin::CeluPluginCreator>(logger, libNamespace);
-  initialize_plugin<nvinfer1::plugin::GroupNormPluginCreator>(logger, libNamespace);
+  //initialize_plugin<nvinfer1::plugin::GroupNormPluginCreator>(logger, libNamespace);
 #endif  // BUILD_LIBTORCH_PLUGINS
 
 // your self plugin
 #ifdef BUILD_SELF_PLUGINS
   initialize_plugin<nvinfer1::plugin::AttMaskedSoftmaxPluginCreator>(logger, libNamespace);
-  initialize_plugin<nvinfer1::plugin::AttStreamSoftmaxPluginCreator>(logger, libNamespace);
-  initialize_plugin<nvinfer1::plugin::CatSplitCachePluginCreator>(logger, libNamespace);
+  //initialize_plugin<nvinfer1::plugin::AttStreamSoftmaxPluginCreator>(logger, libNamespace);
+  //initialize_plugin<nvinfer1::plugin::CatSplitCachePluginCreator>(logger, libNamespace);
   initialize_plugin<nvinfer1::plugin::DumpTensorPluginCreator>(logger, libNamespace);
   initialize_plugin<nvinfer1::plugin::FMoEExpertPluginCreator>(logger, libNamespace);
   initialize_plugin<nvinfer1::plugin::MaskConv2dSamplePluginCreator>(logger, libNamespace);
@@ -168,8 +167,8 @@ bool init_trt_plugin_plus(void* logger, const char* libNamespace) {
 IPluginCreator* get_plugin_creator(const char* plugin_name, const char* plugin_version) {
   auto creator = getPluginRegistry()->getPluginCreator(plugin_name, plugin_version);
   if (!creator) {
-    gLogError << "plugin_name:" << plugin_name << ", version:" << plugin_version << "not found!" << endl;
-    return {};
+    LOG(ERROR) << "plugin_name:" << plugin_name << ", version:" << plugin_version << "not found!" << endl;
+    assert(0);
   }
   return creator;
 }
@@ -178,7 +177,7 @@ IPluginCreator* get_plugin_creator(const char* plugin_name, const char* plugin_v
 ITensorVector AddGluPlugin(INetworkDefinition* network, const ITensorVector& input_tensors,
                            const nvinfer1::DataType type, const int axis_dim) {
   if (input_tensors.size() != 1) {
-    gLogFatal << "input_tensors.size() != 1. glu only support 1 input!" << endl;
+    LOG(ERROR) << "input_tensors.size() != 1. glu only support 1 input!" << endl;
     assert(0);
   }
   // find creator
@@ -194,8 +193,8 @@ ITensorVector AddGluPlugin(INetworkDefinition* network, const ITensorVector& inp
 
   auto plugin = network->addPluginV2(&input_tensors[0], 1, *plugin_obj);
   if (plugin == nullptr) {
-    gLogError << "Create Network: Fail to create [GluPlugin] layer.";
-    return {};
+    LOG(ERROR) << "Create Network: Fail to create [GluPlugin] layer.";
+    assert(0);
   }
 
   plugin->setName((std::to_string(network->getNbLayers()) + std::string(" [GluPlugin]")).c_str());
@@ -221,8 +220,8 @@ ITensorVector AddLayerNormPlugin(INetworkDefinition* network, const ITensorVecto
 
   auto plugin = network->addPluginV2(&input_tensors[0], 3, *plugin_obj);
   if (plugin == nullptr) {
-    gLogError << "Create Network: Fail to create [LayerNormDynamicPlugin] layer.";
-    return {};
+    LOG(ERROR) << "Create Network: Fail to create [LayerNormDynamicPlugin] layer.";
+    assert(0);
   }
 
   plugin->setName((std::to_string(network->getNbLayers()) + std::string(" [LayerNormDynamicPlugin]")).c_str());
@@ -230,41 +229,13 @@ ITensorVector AddLayerNormPlugin(INetworkDefinition* network, const ITensorVecto
   return {plugin->getOutput(0)};
 }
 
-//[>******************************add_silu_plugin***********************************<]
-//ITensorVector AddSiluPlugin(INetworkDefinition* network, const ITensorVector& input_tensors,
-                            //const nvinfer1::DataType type) {
-  //if (input_tensors.size() != 1) {
-    //gLogFatal << "input_tensors.size() != 1. silu only support 1 input!" << endl;
-    //assert(0);
-  //}
-  //// find creator
-  //auto creator = get_plugin_creator(SILU_PLUGIN_NAME, SILU_PLUGIN_VERSION);
-
-  //// create plugin
-  //std::vector<nvinfer1::PluginField> field_data;
-  //field_data.emplace_back("data_type", &type, nvinfer1::PluginFieldType::kINT32, 1);
-
-  //const PluginFieldCollection plugin_data{static_cast<int>(field_data.size()), field_data.data()};
-  //const auto plugin_obj = InferUniquePtr<nvinfer1::IPluginV2>(creator->createPlugin("SiluPlugin", &plugin_data));
-
-  //auto plugin = network->addPluginV2(&input_tensors[0], 1, *plugin_obj);
-  //if (plugin == nullptr) {
-    //gLogError << "Create Network: Fail to create [SiluPlugin] layer.";
-    //return {};
-  //}
-
-  //plugin->setName((std::to_string(network->getNbLayers()) + std::string(" [SiluPlugin]")).c_str());
-
-  //return {plugin->getOutput(0)};
-//}
-
 #ifdef BUILD_LIBTORCH_PLUGINS
 
 /*******************************add_celu_plugin************************************/
 ITensorVector add_celu_plugin(INetworkDefinition* network, const ITensorVector& input_tensors,
                               const nvinfer1::DataType type, const float alpha) {
   if (input_tensors.size() != 1) {
-    gLogFatal << "input_tensors.size() != 1. celu only support 1 input!" << endl;
+    LOG(ERROR) << "input_tensors.size() != 1. celu only support 1 input!" << endl;
     assert(0);
   }
   // find creator
@@ -280,8 +251,8 @@ ITensorVector add_celu_plugin(INetworkDefinition* network, const ITensorVector& 
 
   auto plugin = network->addPluginV2(&input_tensors[0], 1, *plugin_obj);
   if (plugin == nullptr) {
-    gLogError << "Create Network: Fail to create [CeluPlugin] layer.";
-    return {};
+    LOG(ERROR) << "Create Network: Fail to create [CeluPlugin] layer.";
+    assert(0);
   }
 
   plugin->setName((std::to_string(network->getNbLayers()) + std::string(" [CeluPlugin]")).c_str());
@@ -294,7 +265,7 @@ ITensorVector add_celu_plugin(INetworkDefinition* network, const ITensorVector& 
 // const nvinfer1::DataType type, const nvinfer1::Weights& weight, const nvinfer1::Weights& bias,
 // const nvinfer1::Weights& mean, const nvinfer1::Weights& var, const float eps) {
 // if (input_tensors.size() != 1) {
-// gLogFatal << "input_tensors.size() != 1. batch_norm only support 1 input!" << endl;
+// LOG(ERROR) << "input_tensors.size() != 1. batch_norm only support 1 input!" << endl;
 // assert(0);
 //}
 //// find creator
@@ -315,7 +286,7 @@ ITensorVector add_celu_plugin(INetworkDefinition* network, const ITensorVector& 
 
 // auto plugin = network->addPluginV2(&input_tensors[0], 1, *plugin_obj);
 // if (plugin == nullptr) {
-// gLogError << "Create Network: Fail to create [BatchNormPlugin] layer.";
+// LOG(ERROR) << "Create Network: Fail to create [BatchNormPlugin] layer.";
 // return {};
 //}
 
@@ -323,39 +294,6 @@ ITensorVector add_celu_plugin(INetworkDefinition* network, const ITensorVector& 
 
 // return {plugin->getOutput(0)};
 //}
-
-/*******************************add_group_norm_plugin************************************/
-ITensorVector add_group_norm_plugin(INetworkDefinition* network, const ITensorVector& input_tensors,
-                                    const nvinfer1::DataType type, const int num_groups,
-                                    const nvinfer1::Weights& weight, const nvinfer1::Weights& bias, const float eps) {
-  if (input_tensors.size() != 1) {
-    gLogFatal << "input_tensors.size() != 1. group_norm only support 1 input!" << endl;
-    assert(0);
-  }
-  // find creator
-  auto creator = get_plugin_creator(GROUP_NORM_PLUGIN_NAME, GROUP_NORM_PLUGIN_VERSION);
-
-  // create plugin
-  std::vector<nvinfer1::PluginField> field_data;
-  field_data.emplace_back("data_type", &type, nvinfer1::PluginFieldType::kINT32, 1);
-  field_data.emplace_back("num_groups", &num_groups, nvinfer1::PluginFieldType::kINT32, 1);
-  field_data.emplace_back("weight", weight.values, nvinfer1::PluginFieldType::kFLOAT32, static_cast<int>(weight.count));
-  field_data.emplace_back("bias", bias.values, nvinfer1::PluginFieldType::kFLOAT32, static_cast<int>(bias.count));
-  field_data.emplace_back("eps", &eps, nvinfer1::PluginFieldType::kFLOAT32, 1);
-
-  const PluginFieldCollection plugin_data{static_cast<int>(field_data.size()), field_data.data()};
-  const auto plugin_obj = InferUniquePtr<nvinfer1::IPluginV2>(creator->createPlugin("GroupNormPlugin", &plugin_data));
-
-  auto plugin = network->addPluginV2(&input_tensors[0], 1, *plugin_obj);
-  if (plugin == nullptr) {
-    gLogError << "Create Network: Fail to create [GroupNormPlugin] layer.";
-    return {};
-  }
-
-  plugin->setName((std::to_string(network->getNbLayers()) + std::string(" [GroupNormPlugin]")).c_str());
-
-  return {plugin->getOutput(0)};
-}
 
 #endif  // BUILD_LIBTORCH_PLUGINS
 
@@ -366,7 +304,7 @@ ITensorVector add_group_norm_plugin(INetworkDefinition* network, const ITensorVe
 ITensorVector AddAttMaskedSoftmaxPlugin(INetworkDefinition* network, const ITensorVector& input_tensors,
                                         const nvinfer1::DataType type, const float scale) {
   if (input_tensors.size() != 2) {
-    gLogFatal << "input_tensors.size() != 2. MaskedSoftmax only support 2 input!" << endl;
+    LOG(ERROR) << "input_tensors.size() != 2. MaskedSoftmax only support 2 input!" << endl;
     assert(0);
   }
 
@@ -384,8 +322,8 @@ ITensorVector AddAttMaskedSoftmaxPlugin(INetworkDefinition* network, const ITens
 
   auto plugin = network->addPluginV2(&input_tensors[0], 2, *plugin_obj);
   if (plugin == nullptr) {
-    gLogError << "Create Network: Fail to create [AttMaskedSoftmaxPlugin] layer.";
-    return {};
+    LOG(ERROR) << "Create Network: Fail to create [AttMaskedSoftmaxPlugin] layer.";
+    assert(0);
   }
 
   plugin->setName((std::to_string(network->getNbLayers()) + std::string(" [AttMaskedSoftmaxPlugin]")).c_str());
@@ -393,43 +331,44 @@ ITensorVector AddAttMaskedSoftmaxPlugin(INetworkDefinition* network, const ITens
   return {plugin->getOutput(0)};
 }
 
-/*******************************add_att_stream_softmax_plugin************************************/
-ITensorVector AddAttStreamSoftmaxPlugin(INetworkDefinition* network, const ITensorVector& input_tensors,
-                                        const nvinfer1::DataType type, const float scale, const int cache_len) {
-  if (input_tensors.size() != 3) {
-    gLogFatal << "input_tensors.size() != 3. AttStreamSoftmaxPlugin only support 3 input!" << endl;
-    assert(0);
-  }
+//[>******************************add_att_stream_softmax_plugin***********************************<]
+//ITensorVector AddAttStreamSoftmaxPlugin(INetworkDefinition* network, const ITensorVector& input_tensors,
+                                        //const nvinfer1::DataType type, const float scale, const int cache_len) {
+  //if (input_tensors.size() != 3) {
+    //LOG(ERROR) << "input_tensors.size() != 3. AttStreamSoftmaxPlugin only support 3 input!" << endl;
+    //assert(0);
+  //}
 
-  // find creator
-  auto creator = get_plugin_creator(ATT_STREAM_SOFTMAX_PLUGIN_NAME, ATT_STREAM_SOFTMAX_PLUGIN_VERSION);
+  //// find creator
+  //auto creator = get_plugin_creator(ATT_STREAM_SOFTMAX_PLUGIN_NAME, ATT_STREAM_SOFTMAX_PLUGIN_VERSION);
 
-  // create plugin
-  std::vector<nvinfer1::PluginField> field_data;
-  field_data.emplace_back("data_type", &type, nvinfer1::PluginFieldType::kINT32, 1);
-  field_data.emplace_back("scale", &scale, nvinfer1::PluginFieldType::kFLOAT32, 1);
-  field_data.emplace_back("cache_len", &cache_len, nvinfer1::PluginFieldType::kINT32, 1);
+  //// create plugin
+  //std::vector<nvinfer1::PluginField> field_data;
+  //field_data.emplace_back("data_type", &type, nvinfer1::PluginFieldType::kINT32, 1);
+  //field_data.emplace_back("scale", &scale, nvinfer1::PluginFieldType::kFLOAT32, 1);
+  //field_data.emplace_back("cache_len", &cache_len, nvinfer1::PluginFieldType::kINT32, 1);
 
-  const PluginFieldCollection plugin_data{static_cast<int>(field_data.size()), field_data.data()};
-  const auto plugin_obj =
-      InferUniquePtr<nvinfer1::IPluginV2>(creator->createPlugin("AttStreamSoftmaxPlugin", &plugin_data));
+  //const PluginFieldCollection plugin_data{static_cast<int>(field_data.size()), field_data.data()};
+  //const auto plugin_obj =
+      //InferUniquePtr<nvinfer1::IPluginV2>(creator->createPlugin("AttStreamSoftmaxPlugin", &plugin_data));
 
-  auto plugin = network->addPluginV2(&input_tensors[0], 3, *plugin_obj);
-  if (plugin == nullptr) {
-    gLogError << "Create Network: Fail to create [AttStreamSoftmaxPlugin] layer.";
-    return {};
-  }
+  //auto plugin = network->addPluginV2(&input_tensors[0], 3, *plugin_obj);
+  //if (plugin == nullptr) {
+    //LOG(ERROR) << "Create Network: Fail to create [AttStreamSoftmaxPlugin] layer.";
+    //assert(0);
+    //return {};
+  //}
 
-  plugin->setName((std::to_string(network->getNbLayers()) + std::string(" [AttStreamSoftmaxPlugin]")).c_str());
+  //plugin->setName((std::to_string(network->getNbLayers()) + std::string(" [AttStreamSoftmaxPlugin]")).c_str());
 
-  return {plugin->getOutput(0)};
-}
+  //return {plugin->getOutput(0)};
+//}
 
 /*******************************add_masked_fill_plugin************************************/
 ITensorVector AddMaskedFillPlugin(INetworkDefinition* network, const ITensorVector& input_tensors,
                                   const nvinfer1::DataType type, const float fill) {
   if (input_tensors.size() != 2) {
-    gLogFatal << "input_tensors.size() != 2" << endl;
+    LOG(ERROR) << "input_tensors.size() != 2" << endl;
     assert(0);
   }
   // find creator
@@ -445,7 +384,8 @@ ITensorVector AddMaskedFillPlugin(INetworkDefinition* network, const ITensorVect
 
   auto plugin = network->addPluginV2(&input_tensors[0], 2, *plugin_obj);
   if (plugin == nullptr) {
-    gLogError << "Create Network: Fail to create [MaskedFillPlugin] layer.";
+    LOG(ERROR) << "Create Network: Fail to create [MaskedFillPlugin] layer.";
+    assert(0);
     return {};
   }
 
@@ -454,36 +394,37 @@ ITensorVector AddMaskedFillPlugin(INetworkDefinition* network, const ITensorVect
   return {plugin->getOutput(0)};
 }
 
-/*******************************AddCatSplitCachePlugin************************************/
-ITensorVector AddCatSplitCachePlugin(INetworkDefinition* network, const ITensorVector& input_tensors,
-                                     const nvinfer1::DataType type, const int axis_dim) {
-  if (input_tensors.size() != 2) {
-    gLogFatal << "input_tensors.size() != 2. AddCatSplitCachePlugin only support 2 input!" << endl;
-    assert(0);
-  }
+//[>******************************AddCatSplitCachePlugin***********************************<]
+//ITensorVector AddCatSplitCachePlugin(INetworkDefinition* network, const ITensorVector& input_tensors,
+                                     //const nvinfer1::DataType type, const int axis_dim) {
+  //if (input_tensors.size() != 2) {
+    //LOG(ERROR) << "input_tensors.size() != 2. AddCatSplitCachePlugin only support 2 input!" << endl;
+    //assert(0);
+  //}
 
-  // find creator
-  auto creator = get_plugin_creator(CAT_SPLIT_CACHE_PLUGIN_NAME, CAT_SPLIT_CACHE_PLUGIN_VERSION);
+  //// find creator
+  //auto creator = get_plugin_creator(CAT_SPLIT_CACHE_PLUGIN_NAME, CAT_SPLIT_CACHE_PLUGIN_VERSION);
 
-  // create plugin
-  std::vector<nvinfer1::PluginField> field_data;
-  field_data.emplace_back("data_type", &type, nvinfer1::PluginFieldType::kINT32, 1);
-  field_data.emplace_back("axis_dim", &axis_dim, nvinfer1::PluginFieldType::kINT32, 1);
+  //// create plugin
+  //std::vector<nvinfer1::PluginField> field_data;
+  //field_data.emplace_back("data_type", &type, nvinfer1::PluginFieldType::kINT32, 1);
+  //field_data.emplace_back("axis_dim", &axis_dim, nvinfer1::PluginFieldType::kINT32, 1);
 
-  const PluginFieldCollection plugin_data{static_cast<int>(field_data.size()), field_data.data()};
-  const auto plugin_obj =
-      InferUniquePtr<nvinfer1::IPluginV2>(creator->createPlugin("atSplitCachePlugin", &plugin_data));
+  //const PluginFieldCollection plugin_data{static_cast<int>(field_data.size()), field_data.data()};
+  //const auto plugin_obj =
+      //InferUniquePtr<nvinfer1::IPluginV2>(creator->createPlugin("atSplitCachePlugin", &plugin_data));
 
-  auto plugin = network->addPluginV2(&input_tensors[0], 2, *plugin_obj);
-  if (plugin == nullptr) {
-    gLogError << "Create Network: Fail to create [CatSplitCachePlugin] layer.";
-    return {};
-  }
+  //auto plugin = network->addPluginV2(&input_tensors[0], 2, *plugin_obj);
+  //if (plugin == nullptr) {
+    //LOG(ERROR) << "Create Network: Fail to create [CatSplitCachePlugin] layer.";
+    //assert(0);
+    //return {};
+  //}
 
-  plugin->setName((std::to_string(network->getNbLayers()) + std::string(" [CatSplitCachePlugin]")).c_str());
+  //plugin->setName((std::to_string(network->getNbLayers()) + std::string(" [CatSplitCachePlugin]")).c_str());
 
-  return {plugin->getOutput(0), plugin->getOutput(1)};
-}
+  //return {plugin->getOutput(0), plugin->getOutput(1)};
+//}
 
 /*******************************AddDumpTensorPlugin************************************/
 ITensorVector AddDumpTensorPlugin(INetworkDefinition* network, const ITensorVector& input_tensors,
@@ -500,7 +441,7 @@ ITensorVector AddDumpTensorPlugin(INetworkDefinition* network, const ITensorVect
 
   auto plugin = network->addPluginV2(&input_tensors[0], 1, *plugin_obj);
   if (plugin == nullptr) {
-    gLogError << "Create Network: Fail to create [DumpTensorPlugin] layer.";
+    LOG(ERROR) << "Create Network: Fail to create [DumpTensorPlugin] layer.";
     return {};
   }
 
@@ -530,7 +471,8 @@ ITensorVector AddFMoEExpertPlugin(INetworkDefinition* network, const ITensorVect
 
   auto plugin = network->addPluginV2(&input_tensors[0], 6, *plugin_obj);
   if (plugin == nullptr) {
-    gLogError << "Create Network: Fail to create [FMoEDynamicPlugin] layer.";
+    LOG(ERROR) << "Create Network: Fail to create [FMoEDynamicPlugin] layer.";
+    assert(0);
     return {};
   }
 
@@ -543,7 +485,7 @@ ITensorVector AddFMoEExpertPlugin(INetworkDefinition* network, const ITensorVect
 ITensorVector AddMaskConv2dSamplePlugin(INetworkDefinition* network, const ITensorVector& input_tensors,
                                         const int left_padding, const int stride) {
   if (input_tensors.size() != 1) {
-    gLogFatal << "input_tensors.size() != 1. MaskConv2dSample only support 1 input!" << endl;
+    LOG(ERROR) << "input_tensors.size() != 1. MaskConv2dSample only support 1 input!" << endl;
     assert(0);
   }
 
@@ -561,7 +503,8 @@ ITensorVector AddMaskConv2dSamplePlugin(INetworkDefinition* network, const ITens
 
   auto plugin = network->addPluginV2(&input_tensors[0], 1, *plugin_obj);
   if (plugin == nullptr) {
-    gLogError << "Create Network: Fail to create [MaskConv2dSamplePlugin] layer.";
+    LOG(ERROR) << "Create Network: Fail to create [MaskConv2dSamplePlugin] layer.";
+    assert(0);
     return {};
   }
 
@@ -589,11 +532,12 @@ ITensorVector AddRelPositionalEncodingPlugin(INetworkDefinition* network, const 
   const auto plugin_obj =
       InferUniquePtr<nvinfer1::IPluginV2>(creator->createPlugin("RelPositionalEncoding", &plugin_data));
   int input_num = 2;
-  if (streaming) input_num ++;
+  if (streaming) input_num++;
 
   auto plugin = network->addPluginV2(&input_tensors[0], input_num, *plugin_obj);
   if (plugin == nullptr) {
-    gLogError << "Create Network: Fail to create [RelPositionalEncoding] layer.";
+    LOG(ERROR) << "Create Network: Fail to create [RelPositionalEncoding] layer.";
+    assert(0);
     return {};
   }
 

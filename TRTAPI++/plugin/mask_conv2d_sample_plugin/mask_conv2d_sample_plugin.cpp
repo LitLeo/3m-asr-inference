@@ -37,7 +37,9 @@ MaskConv2dSamplePlugin::MaskConv2dSamplePlugin(void const* serialData, size_t se
   deserialize_value(&serialData, &serialLength, &stride_);
 }
 
-size_t MaskConv2dSamplePlugin::getSerializationSize() const TRTNOEXCEPT { return sizeof(left_padding_) + sizeof(stride_); }
+size_t MaskConv2dSamplePlugin::getSerializationSize() const TRTNOEXCEPT {
+  return sizeof(left_padding_) + sizeof(stride_);
+}
 
 void MaskConv2dSamplePlugin::serialize(void* buffer) const TRTNOEXCEPT {
   serialize_value(&buffer, left_padding_);
@@ -78,7 +80,8 @@ int MaskConv2dSamplePlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
 }
 
 nvinfer1::DimsExprs MaskConv2dSamplePlugin::getOutputDimensions(int outputIndex, const nvinfer1::DimsExprs* inputs,
-                                                                int nbInputs, nvinfer1::IExprBuilder& exprBuilder) TRTNOEXCEPT {
+                                                                int nbInputs,
+                                                                nvinfer1::IExprBuilder& exprBuilder) TRTNOEXCEPT {
   return inputs[0];
 }
 
@@ -86,9 +89,7 @@ nvinfer1::IPluginV2DynamicExt* MaskConv2dSamplePlugin::clone() const TRTNOEXCEPT
   return new MaskConv2dSamplePlugin(layer_name_, left_padding_, stride_);
 }
 
-void MaskConv2dSamplePlugin::destroy() TRTNOEXCEPT {
-  delete this;
-}
+void MaskConv2dSamplePlugin::destroy() TRTNOEXCEPT { delete this; }
 
 const char* MaskConv2dSamplePlugin::getPluginVersion() const TRTNOEXCEPT { return MASK_CONV2D_SAMPLE_PLUGIN_VERSION; }
 
@@ -109,18 +110,20 @@ void MaskConv2dSamplePlugin::attachToContext(cudnnContext* cudnn, cublasContext*
 
 const char* MaskConv2dSamplePluginCreator::getPluginName() const TRTNOEXCEPT { return MASK_CONV2D_SAMPLE_PLUGIN_NAME; }
 
-const char* MaskConv2dSamplePluginCreator::getPluginVersion() const TRTNOEXCEPT { return MASK_CONV2D_SAMPLE_PLUGIN_VERSION; }
+const char* MaskConv2dSamplePluginCreator::getPluginVersion() const TRTNOEXCEPT {
+  return MASK_CONV2D_SAMPLE_PLUGIN_VERSION;
+}
 
 const nvinfer1::PluginFieldCollection* MaskConv2dSamplePluginCreator::getFieldNames() TRTNOEXCEPT {
   std::cerr << "Function not implemented" << std::endl;
   return nullptr;
 }
 
-nvinfer1::IPluginV2DynamicExt* MaskConv2dSamplePluginCreator::createPlugin(const char* name,
-                                                                           const nvinfer1::PluginFieldCollection* fc) TRTNOEXCEPT {
+nvinfer1::IPluginV2DynamicExt* MaskConv2dSamplePluginCreator::createPlugin(
+    const char* name, const nvinfer1::PluginFieldCollection* fc) TRTNOEXCEPT {
   assert(fc->nbFields == 2);
 
-  gLogVerbose << "Creating MaskConv2dSamplePlugin...\n";
+  LOG(INFO) << "Creating MaskConv2dSamplePlugin...\n";
 
   int left_padding = 0, stride = 1;
 
@@ -129,12 +132,12 @@ nvinfer1::IPluginV2DynamicExt* MaskConv2dSamplePluginCreator::createPlugin(const
 
     if (field_name.compare("left_padding") == 0) {
       left_padding = static_cast<const int*>(fc->fields[i].data)[0];
-      gLogVerbose << "Building left_padding : " << left_padding << std::endl;
+      LOG(INFO) << "Building left_padding : " << left_padding << std::endl;
     }
 
     if (field_name.compare("stride") == 0) {
       stride = static_cast<const int*>(fc->fields[i].data)[0];
-      gLogVerbose << "Building stride: " << stride << std::endl;
+      LOG(INFO) << "Building stride: " << stride << std::endl;
     }
   }
 

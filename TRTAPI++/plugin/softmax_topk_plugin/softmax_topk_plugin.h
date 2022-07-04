@@ -10,8 +10,8 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-#ifndef PLUGIN_GLU_PLUGIN_GLU_PLUGIN_H_
-#define PLUGIN_GLU_PLUGIN_GLU_PLUGIN_H_
+#ifndef PLUGIN_SOFTMAX_TOPK_PLUGIN_SOFTMAX_TOPK_PLUGIN_H_
+#define PLUGIN_SOFTMAX_TOPK_PLUGIN_SOFTMAX_TOPK_PLUGIN_H_
 
 #include <thrust/device_vector.h>
 #include <iostream>
@@ -24,17 +24,18 @@
 namespace nvinfer1 {
 namespace plugin {
 
-constexpr const char* GLU_PLUGIN_VERSION{"1"};
-constexpr const char* GLU_PLUGIN_NAME{"GluPluginDynamic"};
+constexpr const char* SOFTMAX_TOPK_PLUGIN_VERSION{"1"};
+constexpr const char* SOFTMAX_TOPK_PLUGIN_NAME{"SoftmaxTopKPluginDynamic"};
 
-class GluPlugin final : public nvinfer1::IPluginV2DynamicExt {
+class SoftmaxTopKPlugin final : public nvinfer1::IPluginV2DynamicExt {
   const std::string layer_name_;
   nvinfer1::DataType data_type_;
   int axis_dim_;
+  int k_;
 
  public:
-  GluPlugin(const std::string name, const nvinfer1::DataType type, const int axis_dim);
-  GluPlugin(void const* serial_data, size_t serial_length);
+  SoftmaxTopKPlugin(const std::string name, const nvinfer1::DataType type, const int axis_dim, const int k);
+  SoftmaxTopKPlugin(void const* serial_data, size_t serial_length);
 
   bool supportsFormatCombination(int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
                                  int nb_outputs) TRTNOEXCEPT override;
@@ -66,10 +67,10 @@ class GluPlugin final : public nvinfer1::IPluginV2DynamicExt {
   void detachFromContext() TRTNOEXCEPT override {}
 };
 
-class GluPluginCreator : public nvinfer1::IPluginCreator {
+class SoftmaxTopKCreator : public nvinfer1::IPluginCreator {
  public:
-  GluPluginCreator() {}
-  ~GluPluginCreator() {}
+  SoftmaxTopKCreator() {}
+  ~SoftmaxTopKCreator() {}
 
   const char* getPluginName() const TRTNOEXCEPT;
   const char* getPluginVersion() const TRTNOEXCEPT;
@@ -91,4 +92,4 @@ class GluPluginCreator : public nvinfer1::IPluginCreator {
 
 }  // namespace plugin
 }  // namespace nvinfer1
-#endif  // PLUGIN_GLU_PLUGIN_GLU_PLUGIN_H_
+#endif  // PLUGIN_SOFTMAX_TOPK_PLUGIN_SOFTMAX_TOPK_PLUGIN_H_

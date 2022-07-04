@@ -45,7 +45,7 @@ int ComputeGluTpl(const int M, const int split_dim_size, const int N, const T* x
 
   auto ret = cudaPeekAtLastError();
   if (ret != cudaSuccess) {
-    gLogError << "gluDim0Kernel failed! status = " << cudaGetErrorString(ret) << endl;
+    LOG(ERROR) << "gluDim0Kernel failed! status = " << cudaGetErrorString(ret) << endl;
     return -1;
   }
   return 0;

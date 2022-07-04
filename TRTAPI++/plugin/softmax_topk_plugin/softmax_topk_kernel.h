@@ -10,22 +10,20 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-#ifndef PLUGIN_ATT_STREAM_SOFTMAX_KERNEL_H_
-#define PLUGIN_ATT_STREAM_SOFTMAX_KERNEL_H_
+#ifndef PLUGIN_SOFTMAX_TOPK_PLUGIN_SOFTMAX_TOPK_KERNEL_H_
+#define PLUGIN_SOFTMAX_TOPK_PLUGIN_SOFTMAX_TOPK_KERNEL_H_
 
 #include "common.h"
 
 namespace nvinfer1 {
 namespace plugin {
 
-int ComputeAttStreamSoftmax(cudaStream_t stream, const int ld, const int B, const int N, const float rsqrt_head_size,
-                            const int cache_len, const int* decode_frame_num, const int* mask_idx, const float* input,
-                            float* output);
+int ComputeSoftmaxAndTop1(const float* input, const int* mask, int B, int seq_len, int dim, int ld, int* topk_idx,
+                          float* topk_value, cudaStream_t stream);
 
-int ComputeAttStreamSoftmax(cudaStream_t stream, const int ld, const int B, const int N, const float rsqrt_head_size,
-                            const int cache_len, const int* decode_frame_num, const int* mask_idx, const half* input,
-                            half* output);
+int ComputeSoftmaxAndTop1(const half* input, const int* mask, int B, int seq_len, int dim, int ld, int* topk_idx,
+                          half* topk_value, cudaStream_t stream);
 
 }  // namespace plugin
 }  // namespace nvinfer1
-#endif  // PLUGIN_ATT_STREAM_SOFTMAX_KERNEL_H_
+#endif  // PLUGIN_SOFTMAX_TOPK_PLUGIN_SOFTMAX_TOPK_KERNEL_H_

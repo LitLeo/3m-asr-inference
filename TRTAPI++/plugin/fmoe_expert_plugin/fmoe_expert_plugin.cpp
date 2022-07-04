@@ -19,8 +19,8 @@
 #include "NvInfer.h"
 #include "common.h"
 #include "cublas_common.h"
-#include "serialize.hpp"
 #include "fmoe_expert_kernel.h"
+#include "serialize.hpp"
 
 #include "debug.h"
 
@@ -33,16 +33,13 @@ std::vector<PluginField> FMoEExpertPluginCreator::plugin_attributes_;
 
 REGISTER_TENSORRT_PLUGIN(FMoEExpertPluginCreator);
 
-template<class T>
-int compute_fmoe_expert(const T* input, const int* gate_idx, const int input_volume, const int S,
-                        const int num_expert, const int idim, const int hidden_units,
-                        const T* w1_weight_ptr, const T* w1_bias_ptr,
-                        const T* w2_weight_ptr, const T* w2_bias_ptr,
-                        std::vector<int>& v_acc_his, void* workspace, T* output,
-                        cudaStream_t stream, std::shared_ptr<CudaStreamManager> csm_ptr) {
-
+template <class T>
+int compute_fmoe_expert(const T* input, const int* gate_idx, const int input_volume, const int S, const int num_expert,
+                        const int idim, const int hidden_units, const T* w1_weight_ptr, const T* w1_bias_ptr,
+                        const T* w2_weight_ptr, const T* w2_bias_ptr, std::vector<int>& v_acc_his, void* workspace,
+                        T* output, cudaStream_t stream, std::shared_ptr<CudaStreamManager> csm_ptr) {
   auto mapping_size = alignTo<int>(S, kAlignment);
-  auto his_size = alignTo<int>(num_expert+1, kAlignment);
+  auto his_size = alignTo<int>(num_expert + 1, kAlignment);
   auto input_buffer_size = alignTo<int>(input_volume, kAlignment);
 
   int* mapping = static_cast<int*>(workspace);
@@ -51,16 +48,16 @@ int compute_fmoe_expert(const T* input, const int* gate_idx, const int input_vol
   int status = -1;
   status = ComputeScatterMapping(gate_idx, num_expert, S, mapping, acc_histogram, stream);
   if (status != 0) {
-    gLogError << "compute_scatter_mapping error!" << endl;
+    LOG(ERROR) << "compute_scatter_mapping error!" << endl;
     return status;
   }
 
-  //print_data(gate_idx, S, "gate_idx");
-  //print_data(mapping, S, "mapping");
-  //print_data(acc_histogram, num_expert+1, "acc_histogram");
-  //cout << "====================" << endl;
+  // print_data(gate_idx, S, "gate_idx");
+  // print_data(mapping, S, "mapping");
+  // print_data(acc_histogram, num_expert+1, "acc_histogram");
+  // cout << "====================" << endl;
 
-  //const size_t word_size = getElementSize(data_type_);
+  // const size_t word_size = getElementSize(data_type_);
   const size_t word_size = sizeof(T);
 
   // get buffer from workspace
@@ -69,14 +66,14 @@ int compute_fmoe_expert(const T* input, const int* gate_idx, const int input_vol
 
   status = ComputeScatterMappingCopy(input, mapping, S, idim, input_buffer, stream);
   if (status != 0) {
-    gLogError << "ComputeScatterMappingCopy error!" << endl;
+    LOG(ERROR) << "ComputeScatterMappingCopy error!" << endl;
     return status;
   }
-  //print_data(input_buffer, 10, "reorder_input0");
-  //print_data(input_buffer + idim_, 10, "reorder_input1");
+  // print_data(input_buffer, 10, "reorder_input0");
+  // print_data(input_buffer + idim_, 10, "reorder_input1");
 
   int* h_acc_his = v_acc_his.data();
-  cudaMemcpyAsync(h_acc_his, acc_histogram, sizeof(int) * (num_expert+1), cudaMemcpyDeviceToHost, stream);
+  cudaMemcpyAsync(h_acc_his, acc_histogram, sizeof(int) * (num_expert + 1), cudaMemcpyDeviceToHost, stream);
 
   cudaStreamSynchronize(stream);
 
@@ -86,8 +83,7 @@ int compute_fmoe_expert(const T* input, const int* gate_idx, const int input_vol
     auto cur_stream = csm_ptr->Stream(i);
     auto handle = csm_ptr->CublasHandle(i);
     int m = h_acc_his[i + 1] - h_acc_his[i];
-    if (m == 0)
-      continue;
+    if (m == 0) continue;
 
     float* input_buffer_ptr = input_buffer + h_acc_his[i] * idim;
     float* hidden_buffer_ptr = hidden_buffer + h_acc_his[i] * hidden_units;
@@ -99,61 +95,60 @@ int compute_fmoe_expert(const T* input, const int* gate_idx, const int input_vol
     auto cur_w2_weight_ptr = w2_weight_ptr + w_offset;
     auto cur_w2_bias_ptr = w2_bias_ptr + i * idim;
 
-    //print_data(input_buffer_ptr, 10, "input_buffer_ptr");
+    // print_data(input_buffer_ptr, 10, "input_buffer_ptr");
     // w1 gemm, tmp => output
-    CUBLAS_CHECK(cublasGemm(handle, transa, transb,
-                            m, hidden_units, idim,
-                            1.0f, input_buffer_ptr, cur_w1_weight_ptr,
+    CUBLAS_CHECK(cublasGemm(handle, transa, transb, m, hidden_units, idim, 1.0f, input_buffer_ptr, cur_w1_weight_ptr,
                             0.0f, hidden_buffer_ptr));
 
-    //print_data(hidden_buffer_ptr, 10, "w1_weight");
+    // print_data(hidden_buffer_ptr, 10, "w1_weight");
 
     // w1 bias + activate, tmp2
-    status = ComputeBiasSilu(hidden_buffer_ptr, cur_w1_bias_ptr, m*hidden_units,
-                             hidden_units, hidden_buffer_ptr, cur_stream);
+    status = ComputeBiasSilu(hidden_buffer_ptr, cur_w1_bias_ptr, m * hidden_units, hidden_units, hidden_buffer_ptr,
+                             cur_stream);
     if (status != 0) {
-      gLogError << "ComputeBiasSilu error!" << endl;
+      LOG(ERROR) << "ComputeBiasSilu error!" << endl;
       return status;
     }
 
-    //print_data(hidden_buffer_ptr, 10, "silu");
+    // print_data(hidden_buffer_ptr, 10, "silu");
 
     // w2 gemm tmp2 => tmp1
-    CUBLAS_CHECK(cublasGemm(handle, transa, transb,
-                            m, idim, hidden_units,
-                            1.0f, hidden_buffer_ptr, cur_w2_weight_ptr,
+    CUBLAS_CHECK(cublasGemm(handle, transa, transb, m, idim, hidden_units, 1.0f, hidden_buffer_ptr, cur_w2_weight_ptr,
                             0.0f, input_buffer_ptr));
 
     // w2 bias tmp1
-    status = ComputeBias(input_buffer_ptr, cur_w2_bias_ptr, m*idim, idim, input_buffer_ptr, cur_stream);
+    status = ComputeBias(input_buffer_ptr, cur_w2_bias_ptr, m * idim, idim, input_buffer_ptr, cur_stream);
     if (status != 0) {
-      gLogError << "ComputeBias error!" << endl;
+      LOG(ERROR) << "ComputeBias error!" << endl;
       return status;
     }
 
-    //print_data(input_buffer_ptr, 10, "w2");
-    //cout << "=================" << endl;
+    // print_data(input_buffer_ptr, 10, "w2");
+    // cout << "=================" << endl;
   }
 
   csm_ptr->SyncAllStream();
 
   status = ComputeGatherrMappingCopy(input_buffer, mapping, S, idim, output, stream);
   if (status != 0) {
-    gLogError << "ComputeGatherrMappingCopy error!" << endl;
+    LOG(ERROR) << "ComputeGatherrMappingCopy error!" << endl;
     return status;
   }
 
-  //print_data(output, 10, "output");
-  //cout << "=================" << endl;
+  // print_data(output, 10, "output");
+  // cout << "=================" << endl;
 
   return status;
-
 }
 
 FMoEExpertPlugin::FMoEExpertPlugin(const std::string& name, const nvinfer1::DataType type, const int num_expert,
                                    const int idim, const int hidden_units, const int act_type)
-    : layer_name_(name), data_type_(type), num_expert_(num_expert),
-      idim_(idim), hidden_units_(hidden_units), act_type_(act_type) {
+    : layer_name_(name),
+      data_type_(type),
+      num_expert_(num_expert),
+      idim_(idim),
+      hidden_units_(hidden_units),
+      act_type_(act_type) {
   v_acc_his_.resize(num_expert_ + 1);
   cuda_stream_manager_.reset(new CudaStreamManager());
   cuda_stream_manager_->Init();
@@ -162,14 +157,17 @@ FMoEExpertPlugin::FMoEExpertPlugin(const std::string& name, const nvinfer1::Data
 FMoEExpertPlugin::FMoEExpertPlugin(const std::string& name, const nvinfer1::DataType type, const int num_expert,
                                    const int idim, const int hidden_units, const int act_type,
                                    std::shared_ptr<CudaStreamManager> cuda_stream_manager)
-    : layer_name_(name), data_type_(type), num_expert_(num_expert),
-      idim_(idim), hidden_units_(hidden_units), act_type_(act_type),
+    : layer_name_(name),
+      data_type_(type),
+      num_expert_(num_expert),
+      idim_(idim),
+      hidden_units_(hidden_units),
+      act_type_(act_type),
       cuda_stream_manager_(cuda_stream_manager) {
   v_acc_his_.resize(num_expert_ + 1);
 }
 
 FMoEExpertPlugin::FMoEExpertPlugin(const std::string& name, const void* data, size_t length) : layer_name_(name) {
-
   // Deserialize in the same order as serialization
   deserialize_value(&data, &length, &data_type_);
   deserialize_value(&data, &length, &num_expert_);
@@ -189,18 +187,19 @@ FMoEExpertPlugin::FMoEExpertPlugin(const std::string& name, const void* data, si
 
 // IPluginV2DynamicExt Methods
 IPluginV2DynamicExt* FMoEExpertPlugin::clone() const TRTNOEXCEPT {
-  auto ret = new FMoEExpertPlugin(layer_name_, data_type_, num_expert_, idim_,
-                                  hidden_units_, act_type_, cuda_stream_manager_);
+  auto ret =
+      new FMoEExpertPlugin(layer_name_, data_type_, num_expert_, idim_, hidden_units_, act_type_, cuda_stream_manager_);
   return ret;
 }
 
 DimsExprs FMoEExpertPlugin::getOutputDimensions(int outputIndex, const DimsExprs* inputs, int nbInputs,
-                                          IExprBuilder& exprBuilder) TRTNOEXCEPT {
+                                                IExprBuilder& exprBuilder) TRTNOEXCEPT {
   assert(nbInputs == 6);
   return inputs[0];
 }
 
-bool FMoEExpertPlugin::supportsFormatCombination(int pos, const PluginTensorDesc* inOut, int nbInputs, int nbOutputs) TRTNOEXCEPT {
+bool FMoEExpertPlugin::supportsFormatCombination(int pos, const PluginTensorDesc* inOut, int nbInputs,
+                                                 int nbOutputs) TRTNOEXCEPT {
   assert(nbInputs == 6);
   assert(nbOutputs == 1);
 
@@ -215,7 +214,7 @@ bool FMoEExpertPlugin::supportsFormatCombination(int pos, const PluginTensorDesc
 }
 
 void FMoEExpertPlugin::configurePlugin(const DynamicPluginTensorDesc* inputs, int nbInputs,
-                                 const DynamicPluginTensorDesc* outputs, int nbOutputs) TRTNOEXCEPT {
+                                       const DynamicPluginTensorDesc* outputs, int nbOutputs) TRTNOEXCEPT {
   // Validate input arguments
   assert(nbInputs == 6);
   assert(nbOutputs == 1);
@@ -223,13 +222,13 @@ void FMoEExpertPlugin::configurePlugin(const DynamicPluginTensorDesc* inputs, in
 }
 
 size_t FMoEExpertPlugin::getWorkspaceSize(const PluginTensorDesc* inputs, int nbInputs, const PluginTensorDesc* outputs,
-                                    int nbOutputs) const TRTNOEXCEPT {
+                                          int nbOutputs) const TRTNOEXCEPT {
   const size_t word_size = getElementSize(data_type_);
   const int input_volume = volume(inputs[0].dims);
   const int S = input_volume / idim_;
 
   auto mapping_size = alignTo<int>(S, kAlignment);
-  auto his_size = alignTo<int>(num_expert_+1, kAlignment);
+  auto his_size = alignTo<int>(num_expert_ + 1, kAlignment);
   auto input_buffer_size = alignTo<int>(input_volume, kAlignment);
   auto hidden_buffer_size = alignTo<int>(S * hidden_units_, kAlignment);
 
@@ -240,7 +239,8 @@ size_t FMoEExpertPlugin::getWorkspaceSize(const PluginTensorDesc* inputs, int nb
 }
 
 int FMoEExpertPlugin::enqueue(const PluginTensorDesc* inputDesc, const PluginTensorDesc* outputDesc,
-                        const void* const* inputs, void* const* outputs, void* workspace, cudaStream_t stream) TRTNOEXCEPT {
+                              const void* const* inputs, void* const* outputs, void* workspace,
+                              cudaStream_t stream) TRTNOEXCEPT {
   const int input_volume = volume(inputDesc[0].dims);
   const int S = input_volume / idim_;
 
@@ -258,15 +258,12 @@ int FMoEExpertPlugin::enqueue(const PluginTensorDesc* inputDesc, const PluginTen
 
     float* output = static_cast<float*>(outputs[0]);
 
-    status = compute_fmoe_expert(input, gate_idx, input_volume, S,
-                                 num_expert_, idim_, hidden_units_,
-                                 w1_weight_ptr, w1_bias_ptr, w2_weight_ptr, w2_bias_ptr,
-                                 v_acc_his_, workspace, output,
-                                 stream, cuda_stream_manager_);
+    status = compute_fmoe_expert(input, gate_idx, input_volume, S, num_expert_, idim_, hidden_units_, w1_weight_ptr,
+                                 w1_bias_ptr, w2_weight_ptr, w2_bias_ptr, v_acc_his_, workspace, output, stream,
+                                 cuda_stream_manager_);
   } else if (data_type_ == DataType::kHALF) {
     assert(0);
   }
-
 
   return status;
 }
@@ -289,8 +286,8 @@ int FMoEExpertPlugin::initialize() TRTNOEXCEPT { return 0; }
 void FMoEExpertPlugin::terminate() TRTNOEXCEPT {}
 
 size_t FMoEExpertPlugin::getSerializationSize() const TRTNOEXCEPT {
-  return sizeof(data_type_) + sizeof(num_expert_) + sizeof(idim_)
-         + sizeof(hidden_units_) + sizeof(act_type_) + 3*sizeof(int);
+  return sizeof(data_type_) + sizeof(num_expert_) + sizeof(idim_) + sizeof(hidden_units_) + sizeof(act_type_) +
+         3 * sizeof(int);
 }
 
 void FMoEExpertPlugin::serialize(void* buffer) const TRTNOEXCEPT {
@@ -306,9 +303,7 @@ void FMoEExpertPlugin::serialize(void* buffer) const TRTNOEXCEPT {
   serialize_value(&buffer, tmp);
 }
 
-void FMoEExpertPlugin::destroy() TRTNOEXCEPT {
-  delete this;
-}
+void FMoEExpertPlugin::destroy() TRTNOEXCEPT { delete this; }
 
 void FMoEExpertPlugin::setPluginNamespace(const char* libNamespace) TRTNOEXCEPT { namespace_ = libNamespace; }
 
@@ -328,7 +323,7 @@ const char* FMoEExpertPluginCreator::getPluginVersion() const TRTNOEXCEPT { retu
 const PluginFieldCollection* FMoEExpertPluginCreator::getFieldNames() TRTNOEXCEPT { return &FC_; }
 
 IPluginV2* FMoEExpertPluginCreator::createPlugin(const char* name, const PluginFieldCollection* fc) TRTNOEXCEPT {
-  gLogVerbose << "Creating FMoEExpertPlugin...\n";
+  LOG(INFO) << "Creating FMoEExpertPlugin...\n";
 
   int type_id = -1;
   int num_expert = 0, idim = 0, hidden_units = 0, act_type = 0;
@@ -338,39 +333,40 @@ IPluginV2* FMoEExpertPluginCreator::createPlugin(const char* name, const PluginF
 
     if (field_name.compare("data_type") == 0) {
       type_id = *static_cast<const int*>(fc->fields[i].data);
-      gLogVerbose << "Building type_id: " << type_id << std::endl;
+      LOG(INFO) << "Building type_id: " << type_id << std::endl;
     }
     if (field_name.compare("num_expert") == 0) {
       num_expert = *static_cast<const int*>(fc->fields[i].data);
-      gLogVerbose << "Building num_expert: " << num_expert << std::endl;
+      LOG(INFO) << "Building num_expert: " << num_expert << std::endl;
     }
     if (field_name.compare("idim") == 0) {
       idim = *static_cast<const int*>(fc->fields[i].data);
-      gLogVerbose << "Building idim " << idim << std::endl;
+      LOG(INFO) << "Building idim " << idim << std::endl;
     }
     if (field_name.compare("hidden_units") == 0) {
       hidden_units = *static_cast<const int*>(fc->fields[i].data);
-      gLogVerbose << "Building hidden_units " << hidden_units << std::endl;
+      LOG(INFO) << "Building hidden_units " << hidden_units << std::endl;
     }
     if (field_name.compare("act_type") == 0) {
       act_type = *static_cast<const int*>(fc->fields[i].data);
-      gLogVerbose << "Building act_type " << act_type << std::endl;
+      LOG(INFO) << "Building act_type " << act_type << std::endl;
     }
   }
 
   if (type_id < 0 || type_id > 1) {
-    gLogError << "fmoe: invalid type_id " << type_id << std::endl;
+    LOG(ERROR) << "fmoe: invalid type_id " << type_id << std::endl;
     return nullptr;
   }
 
   DataType type = static_cast<DataType>(type_id);
 
-  gLogVerbose << "Building the Plugin...\n";
+  LOG(INFO) << "Building the Plugin...\n";
   FMoEExpertPlugin* p = new FMoEExpertPlugin(name, type, num_expert, idim, hidden_units, act_type);
   return p;
 }
 
-IPluginV2* FMoEExpertPluginCreator::deserializePlugin(const char* name, const void* serialData, size_t serialLength) TRTNOEXCEPT {
+IPluginV2* FMoEExpertPluginCreator::deserializePlugin(const char* name, const void* serialData,
+                                                      size_t serialLength) TRTNOEXCEPT {
   // This object will be deleted when the network is destroyed, which will
   // call FMoEExpertPlugin::destroy()
   return new FMoEExpertPlugin(name, serialData, serialLength);

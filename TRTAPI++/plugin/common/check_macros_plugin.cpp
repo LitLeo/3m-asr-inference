@@ -20,20 +20,20 @@
 #include <cuda_runtime.h>
 #include <cstdlib>
 
-#include "logger.h"
+#include "trt_logger.h"
 
 namespace nvinfer1 {
 namespace plugin {
 
 // break-pointable
-void throwCudaError(const char* file, const char* function, int line, int status, const char* msg) {
-  CudaError error(file, function, line, status, msg);
-  error.log(gLogError);
-  throw error;
+void CudaError(const char* file, const char* function, int line, int status, const char* msg) {
+  //CudaError error(file, function, line, status, msg);
+  //error.log(LOG(ERROR));
+  //throw error;
 }
 
 // break-pointable
-void throwCublasError(const char* file, const char* function, int line, int status, const char* msg) {
+void CublasError(const char* file, const char* function, int line, int status, const char* msg) {
   if (msg == nullptr) {
     auto s_ = static_cast<cublasStatus_t>(status);
     switch (s_) {
@@ -69,21 +69,21 @@ void throwCublasError(const char* file, const char* function, int line, int stat
         break;
     }
   }
-  CublasError error(file, function, line, status, msg);
-  error.log(gLogError);
-  throw error;
+  //CublasError error(file, function, line, status, msg);
+  //error.log(LOG(ERROR));
+  //throw error;
 }
 
 // break-pointable
-void throwCudnnError(const char* file, const char* function, int line, int status, const char* msg) {
-  CudnnError error(file, function, line, status, msg);
-  error.log(gLogError);
-  throw error;
+void CudnnError(const char* file, const char* function, int line, int status, const char* msg) {
+  //CudnnError error(file, function, line, status, msg);
+  //error.log(LOG(ERROR));
+  //throw error;
 }
 
 void logError(const char* msg, const char* file, const char* fn, int line) {
-  gLogError << "Parameter check failed at: " << file << "::" << fn << "::" << line;
-  gLogError << ", condition: " << msg << std::endl;
+  LOG(ERROR) << "Parameter check failed at: " << file << "::" << fn << "::" << line;
+  LOG(ERROR) << ", condition: " << msg << std::endl;
 }
 
 // break-pointable
@@ -95,13 +95,13 @@ void reportAssertion(const char* msg, const char* file, int line) {
   abort();
 }
 
-void TRTException::log(std::ostream& logStream) const {
-  logStream << file << " (" << line << ") - " << name << " Error in " << function << ": " << status;
-  if (message != nullptr) {
-    logStream << " (" << message << ")";
-  }
-  logStream << std::endl;
-}
+//void TRTException::log(std::ostream& logStream) const {
+  //logStream << file << " (" << line << ") - " << name << " Error in " << function << ": " << status;
+  //if (message != nullptr) {
+    //logStream << " (" << message << ")";
+  //}
+  //logStream << std::endl;
+//}
 
 }  // namespace plugin
 }  // namespace nvinfer1

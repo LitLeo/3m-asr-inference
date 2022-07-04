@@ -19,7 +19,7 @@ include(cmake/modules/find_library_create_target.cmake)
 string(TIMESTAMP COMPILE_TIME "%Y%m%d")
 set(TRT_PLUGIN_MAJOR 1)
 set(TRT_PLUGIN_MINOR 0)
-set(TRT_PLUGIN_PATCH 3)
+set(TRT_PLUGIN_PATCH 4)
 set(TRT_PLUGIN_BUILD "Build${COMPILE_TIME}")
 set(TRT_PLUGIN_VERSION "${TRT_PLUGIN_MAJOR}.${TRT_PLUGIN_MINOR}.${TRT_PLUGIN_PATCH}")
 
@@ -38,13 +38,12 @@ if (BUILD_SELF_PLUGINS)
     set(PLUGIN_LISTS 
         ${PLUGIN_LISTS}
         att_masked_softmax_plugin
-        att_stream_softmax_plugin
-        cat_split_cache_plugin
         dump_tensor_plugin
         fmoe_expert_plugin
         masked_fill_plugin
         mask_conv2d_sample_plugin
         rel_positional_encoding_plugin
+        softmax_topk_plugin
     )
 endif()
         #left_padding_cache_plugin
@@ -53,10 +52,10 @@ if (BUILD_LIBTORCH_PLUGINS)
     set(PLUGIN_LISTS 
         ${PLUGIN_LISTS}
         celu_plugin
-        group_norm_plugin
     )
 endif()
 
+        #group_norm_plugin
         #batch_norm_plugin
 
 ##########################################
@@ -161,6 +160,8 @@ include_directories(
     ${CUDNN_ROOT_DIR}/include
     ${TRT_INSTALL_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/easyloggingpp
 )
 
 # cuda
@@ -177,20 +178,15 @@ find_library_create_target(nvinfer nvinfer SHARED ${TRT_LIB_DIR})
 
 find_library(RT_LIB rt)
 
-## torch
-if(BUILD_GTESTS)
-    set_ifndef(Torch_INSTALL_DIR "/usr/local/libtorch/" CACHE STRING "")
-    set(Torch_DIR "${Torch_INSTALL_DIR}/share/cmake/Torch" CACHE STRING "Torch dir" FORCE)
-    find_package(Torch REQUIRED)
+### torch
+#set_ifndef(Torch_INSTALL_DIR "/usr/local/libtorch/" CACHE STRING "")
+#set(Torch_DIR "${Torch_INSTALL_DIR}/share/cmake/Torch" CACHE STRING "Torch dir" FORCE)
+#find_package(Torch REQUIRED)
 
-    message(STATUS "Torch_VERSION = ${Torch_VERSION}") 
-    message(STATUS "Torch_VERSION_MAJOR = ${Torch_VERSION_MAJOR}") 
-    message(STATUS "Torch_VERSION_MINOR = ${Torch_VERSION_MINOR}") 
-    message(STATUS "Torch_VERSION_PATCH = ${Torch_VERSION_PATCH}")    
-else()
-    set(Torch_VERSION "None")
-endif()
-
+#message(STATUS "Torch_VERSION = ${Torch_VERSION}") 
+#message(STATUS "Torch_VERSION_MAJOR = ${Torch_VERSION_MAJOR}") 
+#message(STATUS "Torch_VERSION_MINOR = ${Torch_VERSION_MINOR}") 
+#message(STATUS "Torch_VERSION_PATCH = ${Torch_VERSION_PATCH}")    
 
 if (BUILD_LIBTORCH_PLUGINS)
     add_compile_options(-DBUILD_LIBTORCH_PLUGINS)
@@ -240,7 +236,7 @@ endif()
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler -Wno-deprecated-declarations")
 
 ############################################################################################
-set(INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/TorchTrtPlugin${TRT_PLUGIN_VERSION}_cuda${CUDA_VERSION}_trt${TRT_VERSION}")
+set(INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/trtplugin++_${TRT_PLUGIN_VERSION}_cuda${CUDA_VERSION}_trt${TRT_VERSION}")
 
 add_subdirectory(plugin)
 add_subdirectory(python)
@@ -259,7 +255,6 @@ string_status("Build Time"        ${TRT_PLUGIN_BUILD})
 string_status("Build Type"        ${CMAKE_BUILD_TYPE})
 string_status("CUDA Version"      ${CUDA_VERSION})
 string_status("CUDNN Version"     ${CUDNN_VERSION})
-string_status("Torch Version"     ${Torch_VERSION})
 string_status("TensorRT Version"  ${TRT_VERSION})
 string_status("GPU Archs"         ${GPU_ARCHS_STR})
 option_status("BUILD_GTESTS"      ${BUILD_GTESTS})

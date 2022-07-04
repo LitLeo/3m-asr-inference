@@ -25,15 +25,14 @@ using kvp = cub::KeyValuePair<T, T>;
 
 template <typename T>
 struct mySum {
-  __host__ __device__ __forceinline__ kvp<T> operator()(const kvp<T> &a, const kvp<T> &b) const {
+  __host__ __device__ __forceinline__ kvp<T> operator()(const kvp<T>& a, const kvp<T>& b) const {
     return kvp<T>(a.key + b.key, a.value + b.value);
   }
 };
 
 template <typename T, typename OP_T, int TPB>
-__global__ void layer_norm_kernel_small(const int nHiddenDimension, const T* input,
-    const T* gamma, const T* beta, T* output) {
-
+__global__ void layer_norm_kernel_small(const int nHiddenDimension, const T* input, const T* gamma, const T* beta,
+                                        T* output) {
   const int index = blockIdx.x * nHiddenDimension + threadIdx.x;
   const T denominator = T(1) / T(nHiddenDimension);
   OP_T val = 0;
@@ -64,9 +63,8 @@ __global__ void layer_norm_kernel_small(const int nHiddenDimension, const T* inp
 }
 
 template <typename T, typename OP_T, int TPB, int VPT>
-__global__ void layer_norm_kernel_medium(const int nHiddenDimension, const T* input,
-    const T* gamma, const T* beta, T* output) {
-
+__global__ void layer_norm_kernel_medium(const int nHiddenDimension, const T* input, const T* gamma, const T* beta,
+                                         T* output) {
   // 考虑一个 block 上的寄存器使用量，当 nHiddenDimension 最大为 1024，元素为 float 时，
   // localX:      256 thread/block * 4 element/thread（即VPT） * 4 Byte/element = 4 KiB
   // localBeta:   1024 element / block * 4 Byte / element = 4 KiB
@@ -108,9 +106,8 @@ __global__ void layer_norm_kernel_medium(const int nHiddenDimension, const T* in
 }
 
 template <typename T, typename OP_T, int TPB>
-__global__ void layer_norm_kernel_large(const int nHiddenDimension, const T* input,
-    const T* gamma, const T* beta, T* output) {
-
+__global__ void layer_norm_kernel_large(const int nHiddenDimension, const T* input, const T* gamma, const T* beta,
+                                        T* output) {
   const int offset = blockIdx.x * nHiddenDimension;
   const OP_T denominator = OP_T(1) / OP_T(nHiddenDimension);
   kvp<OP_T> threadData(0, 0);
@@ -143,8 +140,7 @@ __global__ void layer_norm_kernel_large(const int nHiddenDimension, const T* inp
 
 template <typename T>
 int compute_layer_norm_tpl(cudaStream_t stream, const int gridSize, const int ld, const T* input, const T* gamma,
-    const T* beta, T* output) {
-
+                           const T* beta, T* output) {
   constexpr int VPT = 16 / sizeof(T);
 
   if (ld <= 32) {
@@ -165,13 +161,13 @@ int compute_layer_norm_tpl(cudaStream_t stream, const int gridSize, const int ld
   return 0;
 }
 
-int compute_layer_norm(cudaStream_t stream, const int gridSize, const int ld, const float* input,
-                       const float* gamma, const float* beta, float* output) {
+int compute_layer_norm(cudaStream_t stream, const int gridSize, const int ld, const float* input, const float* gamma,
+                       const float* beta, float* output) {
   return compute_layer_norm_tpl<float>(stream, gridSize, ld, input, gamma, beta, output);
 }
 
-int compute_layer_norm(cudaStream_t stream, const int gridSize, const int ld, const half* input,
-                       const half* gamma, const half* beta, half* output) {
+int compute_layer_norm(cudaStream_t stream, const int gridSize, const int ld, const half* input, const half* gamma,
+                       const half* beta, half* output) {
   return compute_layer_norm_tpl<half>(stream, gridSize, ld, input, gamma, beta, output);
 }
 

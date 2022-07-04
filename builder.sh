@@ -15,4 +15,4 @@ python3 builder.py  \
     --config $config \
     --load_path $model_file \
     --cmvn_file $cmvn_file \
-    --output $output_file | tee log.txt
+    --output $output_file

@@ -11,6 +11,8 @@
 // specific language governing permissions and limitations under the License.
 
 #include <numeric>
+#include <iomanip>
+
 #include "dump_tensor_plugin.h"
 
 using namespace std;
@@ -102,9 +104,9 @@ void p_tpl(const T* data, vector<int>& dims) {
 
   // 对于一维和二维Tensor，行元素数量超过15才会压缩
   bool fold_tensor = true;
-  if (dims_size == 1 && dims[0] < 15)
+  if (dims_size == 1 && dims[0] < 15) {
     fold_tensor = false;
-  else if (dims_size == 2) {
+  } else if (dims_size == 2) {
     if (dims[0] <= 6 && dims[1] < 15) fold_tensor = false;
   }
 

@@ -54,7 +54,7 @@ int compute_masked_fill(const float* input, const int* masked, float fill, int b
   masked_fill_kernel<float><<<grid_size, block_size, 0, stream>>>(input, masked, fill, dim, seq_len, output);
   auto ret = cudaPeekAtLastError();
   if (ret != cudaSuccess) {
-    gLogError << "masked_fill_kernel ailed! status = " << cudaGetErrorString(ret) << endl;
+    LOG(ERROR) << "masked_fill_kernel ailed! status = " << cudaGetErrorString(ret) << endl;
     return -1;
   }
   return 0;
@@ -67,7 +67,7 @@ int compute_masked_fill(const half* input, const int* masked, half fill, int bat
   masked_fill_kernel<half><<<grid_size, block_size, 0, stream>>>(input, masked, fill, dim, seq_len, output);
   auto ret = cudaPeekAtLastError();
   if (ret != cudaSuccess) {
-    gLogError << "masked_fill_kernel ailed! status = " << cudaGetErrorString(ret) << endl;
+    LOG(ERROR) << "masked_fill_kernel ailed! status = " << cudaGetErrorString(ret) << endl;
     return -1;
   }
   return 0;

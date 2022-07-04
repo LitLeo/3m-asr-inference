@@ -43,14 +43,15 @@ DumpTensorPlugin::DumpTensorPlugin(const std::string name, const void* data, siz
   deserialize_vector(&data, &length, &layer_name);
   layer_name_ = std::string(layer_name.data());
 
-  gLogVerbose << "Starting to deserialize DEBUG plugin: " << layer_name_ << std::endl;
+  LOG(INFO) << "Starting to deserialize DEBUG plugin: " << layer_name_ << std::endl;
 }
 
 // IPluginV2DynamicExt Methods
 nvinfer1::IPluginV2DynamicExt* DumpTensorPlugin::clone() const TRTNOEXCEPT { return new DumpTensorPlugin(layer_name_); }
 
 nvinfer1::DimsExprs DumpTensorPlugin::getOutputDimensions(int outputIndex, const nvinfer1::DimsExprs* inputs,
-                                                          int nbInputs, nvinfer1::IExprBuilder& exprBuilder) TRTNOEXCEPT {
+                                                          int nbInputs,
+                                                          nvinfer1::IExprBuilder& exprBuilder) TRTNOEXCEPT {
   return inputs[outputIndex];
 }
 
@@ -76,7 +77,8 @@ size_t DumpTensorPlugin::getWorkspaceSize(const nvinfer1::PluginTensorDesc* inpu
 }
 
 int DumpTensorPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc, const nvinfer1::PluginTensorDesc* outputDesc,
-                              const void* const* inputs, void* const* outputs, void* workspace, cudaStream_t stream) TRTNOEXCEPT {
+                              const void* const* inputs, void* const* outputs, void* workspace,
+                              cudaStream_t stream) TRTNOEXCEPT {
   for (size_t n = 0; n < 1; n++) {
     const int input_volume = volume(inputDesc[n].dims);
     // remove dim = 1 or 0
@@ -207,7 +209,8 @@ IPluginV2* DumpTensorPluginCreator::createPlugin(const char* name, const PluginF
   return new DumpTensorPlugin(name);
 }
 
-IPluginV2* DumpTensorPluginCreator::deserializePlugin(const char* name, const void* serialData, size_t serialLength) TRTNOEXCEPT {
+IPluginV2* DumpTensorPluginCreator::deserializePlugin(const char* name, const void* serialData,
+                                                      size_t serialLength) TRTNOEXCEPT {
   // This object will be deleted when the network is destroyed, which will
   // call DumpTensorPlugin::destroy()
   return new DumpTensorPlugin(name, serialData, serialLength);

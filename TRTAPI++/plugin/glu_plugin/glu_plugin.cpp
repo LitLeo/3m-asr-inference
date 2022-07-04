@@ -16,10 +16,10 @@
 #include <algorithm>
 #include <numeric>
 
-#include "glu_kernel.h"
 #include "common.h"
+#include "glu_kernel.h"
 
-//#include "debug.h"
+// #include "debug.h"
 
 using namespace std;
 
@@ -74,7 +74,8 @@ bool GluPlugin::supportsFormatCombination(int pos, const nvinfer1::PluginTensorD
   return false;
 }
 
-nvinfer1::DataType GluPlugin::getOutputDataType(int index, const nvinfer1::DataType* input_types, int nb_inputs) const TRTNOEXCEPT {
+nvinfer1::DataType GluPlugin::getOutputDataType(int index, const nvinfer1::DataType* input_types,
+                                                int nb_inputs) const TRTNOEXCEPT {
   ASSERT(input_types && nb_inputs > 0);
   return input_types[0];
 }
@@ -87,17 +88,18 @@ void GluPlugin::configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in, int
                                 const nvinfer1::DynamicPluginTensorDesc* out, int nb_outputs) TRTNOEXCEPT {}
 
 int GluPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc, const nvinfer1::PluginTensorDesc* output_desc,
-                       const void* const* inputs, void* const* outputs, void* workspace, cudaStream_t stream) TRTNOEXCEPT {
+                       const void* const* inputs, void* const* outputs, void* workspace,
+                       cudaStream_t stream) TRTNOEXCEPT {
   int nb_dims = input_desc[0].dims.nbDims;
 
   if (axis_dim_ < 0) axis_dim_ = nb_dims - 1;
   if (axis_dim_ == 0 || axis_dim_ == (nb_dims - 1)) {
-    gLogFatal << "GluPlugin axis_dim_ == 0! axis_dim_ not support = 0 now! " << endl;
+    LOG(ERROR) << "GluPlugin axis_dim_ == 0! axis_dim_ not support = 0 now! " << endl;
     assert(0);
   }
 
   if (nb_dims < 3) {
-    gLogFatal << "nbDims < 3 not support! " << endl;
+    LOG(ERROR) << "nbDims < 3 not support! " << endl;
     assert(0);
   }
 
@@ -108,7 +110,7 @@ int GluPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc, const nvinf
   int dim = accumulate(d + axis_dim_ + 1, d + nb_dims, 1, std::multiplies<int>());
 
   if (seq_len % 2 != 0) {
-    gLogError << "seq_len % 2 != 0 " << endl;
+    LOG(ERROR) << "seq_len % 2 != 0 " << endl;
     return -1;
   }
 
@@ -139,12 +141,11 @@ nvinfer1::DimsExprs GluPlugin::getOutputDimensions(int output_index, const nvinf
   return output;
 }
 
-nvinfer1::IPluginV2DynamicExt* GluPlugin::clone() const TRTNOEXCEPT { return new GluPlugin(layer_name_, data_type_, axis_dim_); }
-
-void GluPlugin::destroy() TRTNOEXCEPT {
-  // gLogVerbose << "GluPlugin destroy\n";
-  // This gets called when the network containing plugin is destroyed
+nvinfer1::IPluginV2DynamicExt* GluPlugin::clone() const TRTNOEXCEPT {
+  return new GluPlugin(layer_name_, data_type_, axis_dim_);
 }
+
+void GluPlugin::destroy() TRTNOEXCEPT { delete this; }
 
 const char* GluPlugin::getPluginVersion() const TRTNOEXCEPT { return GLU_PLUGIN_VERSION; }
 
@@ -160,7 +161,8 @@ const char* GluPlugin::getPluginNamespace() const TRTNOEXCEPT { return ""; }
 
 int GluPlugin::getNbOutputs() const TRTNOEXCEPT { return 1; }
 
-void GluPlugin::attachToContext(cudnnContext* cudnn, cublasContext* cublas, nvinfer1::IGpuAllocator* allocator) TRTNOEXCEPT {}
+void GluPlugin::attachToContext(cudnnContext* cudnn, cublasContext* cublas,
+                                nvinfer1::IGpuAllocator* allocator) TRTNOEXCEPT {}
 
 const char* GluPluginCreator::getPluginName() const TRTNOEXCEPT { return GLU_PLUGIN_NAME; }
 
@@ -171,11 +173,11 @@ const nvinfer1::PluginFieldCollection* GluPluginCreator::getFieldNames() TRTNOEX
   return nullptr;
 }
 
-nvinfer1::IPluginV2DynamicExt* GluPluginCreator::createPlugin(const char* name,
-                                                              const nvinfer1::PluginFieldCollection* field_collection) TRTNOEXCEPT {
+nvinfer1::IPluginV2DynamicExt* GluPluginCreator::createPlugin(
+    const char* name, const nvinfer1::PluginFieldCollection* field_collection) TRTNOEXCEPT {
   assert(field_collection->nbFields >= 1);
 
-  gLogVerbose << "Creating GluPlugin...\n";
+  LOG(INFO) << "Creating GluPlugin...\n";
 
   int data_type_id = 0, axis_dim = -1;
 
@@ -184,17 +186,17 @@ nvinfer1::IPluginV2DynamicExt* GluPluginCreator::createPlugin(const char* name,
 
     if (field_name.compare("data_type") == 0) {
       data_type_id = static_cast<const int*>(field_collection->fields[i].data)[0];
-      gLogVerbose << "Building data_type_id : " << data_type_id << std::endl;
+      LOG(INFO) << "Building data_type_id : " << data_type_id << std::endl;
 
       if (data_type_id < 0 || data_type_id > 3) {
-        gLogError << "Invalid type id" << data_type_id << std::endl;
+        LOG(ERROR) << "Invalid type id" << data_type_id << std::endl;
         assert(0);
       }
     }
 
     if (field_name.compare("axis_dim") == 0) {
       axis_dim = static_cast<const int*>(field_collection->fields[i].data)[0];
-      gLogVerbose << "Building axis_dim: " << axis_dim << std::endl;
+      LOG(INFO) << "Building axis_dim: " << axis_dim << std::endl;
     }
   }
 

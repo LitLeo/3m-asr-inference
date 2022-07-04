@@ -1,3 +1,15 @@
+// Copyright (C) 2022 THL A29 Limited, a Tencent company. All rights reserved.
+//
+// Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
+// in compliance with the License. You may obtain a copy of the License at
+//
+// https://opensource.org/licenses/BSD-3-Clause
+//
+// Unless required by applicable law or agreed to in writing, software distributed
+// under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+// CONDITIONS OF ANY KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations under the License.
+
 #include "att_stream_softmax_kernel.h"
 
 #include <cuda_fp16.h>
@@ -39,8 +51,9 @@ __device__ inline void AttStreamScaledSoftmaxSmall(const int ld, const int first
   }
 
   /*if (blockIdx.x == 0 && threadIdx.x == 0) {*/
-      /*printf("first_valid=%d, last_valid=%d input=%f, output=%f\n", first_valid, last_valid, __half2float(input[0]),  __half2float(output[0]));*/
-      /*printf("in_ptr=%d, out_ptr = %d\n", input, output);*/
+  /*printf("first_valid=%d, last_valid=%d input=%f, output=%f\n", first_valid, last_valid, __half2float(input[0]),
+   * __half2float(output[0]));*/
+  /*printf("in_ptr=%d, out_ptr = %d\n", input, output);*/
   /*}*/
 
   const float max_elem = BlockReduce(tmpStorage).Reduce(thread_data, cub::Max());
@@ -125,8 +138,8 @@ __global__ void AttStreamScaledSoftmaxKernelSmall(const int ld, const float rsqr
                                                   T* output) {
   __shared__ int first_valid, last_valid;
   /*if (blockIdx.x == 0 && threadIdx.x == 0) {*/
-      /*printf("input=%f, output=%f\n", __half2float(input[0]),  __half2float(output[0]));*/
-      /*printf("in_ptr=%d, out_ptr = %d\n", input, output);*/
+  /*printf("input=%f, output=%f\n", __half2float(input[0]),  __half2float(output[0]));*/
+  /*printf("in_ptr=%d, out_ptr = %d\n", input, output);*/
   /*}*/
 
   if (threadIdx.x == 0) {
@@ -170,8 +183,8 @@ int ComputeAttStreamScaledSoftmaxTpl(cudaStream_t stream, const int ld, const in
         <<<grid, block_size, 0, stream>>>(ld, rsqrt_head_size, cache_len, decode_frame_num, mask_idx, input, output);
   } else if (ld <= 128) {
     constexpr int block_size = 128;
-    AttStreamScaledSoftmaxKernelSmall<T, block_size>
-        <<<grid, block_size, 0, stream>>>(ld, rsqrt_head_size, cache_len, decode_frame_num, mask_idx, const_cast<T*>(input), output);
+    AttStreamScaledSoftmaxKernelSmall<T, block_size><<<grid, block_size, 0, stream>>>(
+        ld, rsqrt_head_size, cache_len, decode_frame_num, mask_idx, const_cast<T*>(input), output);
   } else {
     constexpr int block_size = 256;
     AttStreamScaledSoftmaxKernel<T, block_size>

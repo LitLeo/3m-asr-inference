@@ -33,12 +33,12 @@ class MaskedFillPlugin final : public nvinfer1::IPluginV2DynamicExt {
   half half_fill_;
   cublasHandle_t cublas_handle_;
 
- //protected:
+  // protected:
   //// Supress warnings about hiding function names due to overloads and overrides of virtuals.
-  //using IPluginV2DynamicExt::configurePlugin;
-  //using IPluginV2DynamicExt::enqueue;
-  //using IPluginV2DynamicExt::getOutputDimensions;
-  //using IPluginV2DynamicExt::getWorkspaceSize;
+  // using IPluginV2DynamicExt::configurePlugin;
+  // using IPluginV2DynamicExt::enqueue;
+  // using IPluginV2DynamicExt::getOutputDimensions;
+  // using IPluginV2DynamicExt::getWorkspaceSize;
 
  public:
   MaskedFillPlugin(const std::string name, const nvinfer1::DataType type, const float fill);
@@ -46,7 +46,8 @@ class MaskedFillPlugin final : public nvinfer1::IPluginV2DynamicExt {
 
   bool supportsFormatCombination(int pos, const nvinfer1::PluginTensorDesc* inOut, int nbInputs,
                                  int nbOutputs) TRTNOEXCEPT override;
-  nvinfer1::DataType getOutputDataType(int index, const nvinfer1::DataType* inputTypes, int nbInputs) const TRTNOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index, const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const TRTNOEXCEPT override;
   int initialize() TRTNOEXCEPT override;
   void terminate() TRTNOEXCEPT override;
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in, int nbInputs,
@@ -69,7 +70,8 @@ class MaskedFillPlugin final : public nvinfer1::IPluginV2DynamicExt {
   const char* getPluginNamespace() const TRTNOEXCEPT override;
   int getNbOutputs() const TRTNOEXCEPT override;
 
-  void attachToContext(cudnnContext* cudnn, cublasContext* cublas, nvinfer1::IGpuAllocator* allocator) TRTNOEXCEPT override;
+  void attachToContext(cudnnContext* cudnn, cublasContext* cublas,
+                       nvinfer1::IGpuAllocator* allocator) TRTNOEXCEPT override;
   void detachFromContext() TRTNOEXCEPT override {}
 };
 
@@ -82,7 +84,8 @@ class MaskedFillPluginCreator : public nvinfer1::IPluginCreator {
   const char* getPluginVersion() const TRTNOEXCEPT;
   const nvinfer1::PluginFieldCollection* getFieldNames() TRTNOEXCEPT;
   nvinfer1::IPluginV2DynamicExt* createPlugin(const char* name, const nvinfer1::PluginFieldCollection* fc) TRTNOEXCEPT;
-  nvinfer1::IPluginV2DynamicExt* deserializePlugin(const char* name, const void* serialData, size_t serialLength) TRTNOEXCEPT;
+  nvinfer1::IPluginV2DynamicExt* deserializePlugin(const char* name, const void* serialData,
+                                                   size_t serialLength) TRTNOEXCEPT;
 
   void setPluginNamespace(const char* libNamespace) TRTNOEXCEPT { mNamespace = libNamespace; }
 

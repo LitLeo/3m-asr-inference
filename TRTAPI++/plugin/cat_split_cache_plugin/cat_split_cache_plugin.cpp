@@ -1,11 +1,23 @@
+// Copyright (C) 2022 THL A29 Limited, a Tencent company. All rights reserved.
+//
+// Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
+// in compliance with the License. You may obtain a copy of the License at
+//
+// https://opensource.org/licenses/BSD-3-Clause
+//
+// Unless required by applicable law or agreed to in writing, software distributed
+// under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+// CONDITIONS OF ANY KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations under the License.
+
 #include "cat_split_cache_plugin.h"
 
 #include <cuda_fp16.h>
 #include <algorithm>
 
+#include "cat_split_cache_kernel.h"
 #include "common.h"
 #include "debug.h"
-#include "cat_split_cache_kernel.h"
 
 using namespace std;
 
@@ -77,11 +89,11 @@ void CatSplitCachePlugin::configurePlugin(const nvinfer1::DynamicPluginTensorDes
   auto nb_dims = inputDesc.dims.nbDims;
   if (axis_dim_ < 0) axis_dim_ = nb_dims - 1;
   if (axis_dim_ == 0) {
-    gLogFatal << "CatSplitCachePlugin axis_dim_=" << axis_dim_ << " not support now! " << endl;
+    LOG(ERROR) << "CatSplitCachePlugin axis_dim_=" << axis_dim_ << " not support now! " << endl;
     assert(0);
   }
   if (nb_dims < 3) {
-    gLogFatal << "nbDims < 3 not support! " << endl;
+    LOG(ERROR) << "nbDims < 3 not support! " << endl;
     assert(0);
   }
 
@@ -138,7 +150,8 @@ int CatSplitCachePlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
 // inputs are: input and cache
 // outputs are: output and cache
 nvinfer1::DimsExprs CatSplitCachePlugin::getOutputDimensions(int outputIndex, const nvinfer1::DimsExprs* inputs,
-                                                             int nbInputs, nvinfer1::IExprBuilder& exprBuilder) TRTNOEXCEPT {
+                                                             int nbInputs,
+                                                             nvinfer1::IExprBuilder& exprBuilder) TRTNOEXCEPT {
   auto cache_dims = inputs[0];
   auto input_dims = inputs[1];
   if (outputIndex == 0) {
@@ -155,9 +168,7 @@ nvinfer1::IPluginV2DynamicExt* CatSplitCachePlugin::clone() const TRTNOEXCEPT {
   return new CatSplitCachePlugin(layer_name_, data_type_, axis_dim_);
 }
 
-void CatSplitCachePlugin::destroy() TRTNOEXCEPT {
-  delete this;
-}
+void CatSplitCachePlugin::destroy() TRTNOEXCEPT { delete this; }
 
 const char* CatSplitCachePlugin::getPluginVersion() const TRTNOEXCEPT { return CAT_SPLIT_CACHE_PLUGIN_VERSION; }
 
@@ -185,11 +196,11 @@ const nvinfer1::PluginFieldCollection* CatSplitCachePluginCreator::getFieldNames
   return nullptr;
 }
 
-nvinfer1::IPluginV2DynamicExt* CatSplitCachePluginCreator::createPlugin(const char* name,
-                                                                        const nvinfer1::PluginFieldCollection* fc) TRTNOEXCEPT {
+nvinfer1::IPluginV2DynamicExt* CatSplitCachePluginCreator::createPlugin(
+    const char* name, const nvinfer1::PluginFieldCollection* fc) TRTNOEXCEPT {
   assert(fc->nbFields == 2);
 
-  gLogVerbose << "Creating CatSplitCachePlugin...\n";
+  LOG(INFO) << "Creating CatSplitCachePlugin...\n";
 
   int data_type_id;
   int axis_dim;
@@ -199,16 +210,16 @@ nvinfer1::IPluginV2DynamicExt* CatSplitCachePluginCreator::createPlugin(const ch
 
     if (field_name.compare("data_type") == 0) {
       data_type_id = static_cast<const int*>(fc->fields[i].data)[0];
-      gLogVerbose << "Building data_type_id : " << data_type_id << std::endl;
+      LOG(INFO) << "Building data_type_id : " << data_type_id << std::endl;
     }
     if (field_name.compare("axis_dim") == 0) {
       axis_dim = static_cast<const int*>(fc->fields[i].data)[0];
-      gLogVerbose << "Building axis_dim : " << axis_dim << std::endl;
+      LOG(INFO) << "Building axis_dim : " << axis_dim << std::endl;
     }
   }
 
   if (data_type_id < 0 || data_type_id > 1) {
-    gLogError << "Invalid type id" << data_type_id << std::endl;
+    LOG(ERROR) << "Invalid type id" << data_type_id << std::endl;
     assert(0);
   }
 

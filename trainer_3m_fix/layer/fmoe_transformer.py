@@ -149,7 +149,8 @@ class FmoeConformerLayer(nn.Module):
 
         # x = residual + self.ff_scale * self.dropout(self.feed_forward(x))
         # network_helper.markOutput(x)
-        x = self.feed_forward(network_helper, x, embed)
+        x = self.feed_forward(network_helper, x, embed, x_len)
+        # network_helper.markOutput(x)
 
         x = network_helper.addScale(x, self.ff_scale)
 

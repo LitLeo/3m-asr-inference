@@ -1,3 +1,15 @@
+// Copyright (C) 2022 THL A29 Limited, a Tencent company. All rights reserved.
+//
+// Licensed under the BSD 3-Clause License (the "License"); you may not use this file except
+// in compliance with the License. You may obtain a copy of the License at
+//
+// https://opensource.org/licenses/BSD-3-Clause
+//
+// Unless required by applicable law or agreed to in writing, software distributed
+// under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+// CONDITIONS OF ANY KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations under the License.
+
 #ifndef PLUGIN_CAT_SPLIT_CACHE_PLUGIN_H_
 #define PLUGIN_CAT_SPLIT_CACHE_PLUGIN_H_
 #include <thrust/device_vector.h>
@@ -19,12 +31,12 @@ class CatSplitCachePlugin final : public nvinfer1::IPluginV2DynamicExt {
   nvinfer1::DataType data_type_;
   int axis_dim_;
 
- //protected:
+  // protected:
   //// Supress warnings about hiding function names due to overloads and overrides of virtuals.
-  //using IPluginV2DynamicExt::configurePlugin;
-  //using IPluginV2DynamicExt::enqueue;
-  //using IPluginV2DynamicExt::getOutputDimensions;
-  //using IPluginV2DynamicExt::getWorkspaceSize;
+  // using IPluginV2DynamicExt::configurePlugin;
+  // using IPluginV2DynamicExt::enqueue;
+  // using IPluginV2DynamicExt::getOutputDimensions;
+  // using IPluginV2DynamicExt::getWorkspaceSize;
 
  public:
   CatSplitCachePlugin(const std::string name, const nvinfer1::DataType type, const int axis_dim);
@@ -32,7 +44,8 @@ class CatSplitCachePlugin final : public nvinfer1::IPluginV2DynamicExt {
 
   bool supportsFormatCombination(int pos, const nvinfer1::PluginTensorDesc* inOut, int nbInputs,
                                  int nbOutputs) TRTNOEXCEPT override;
-  nvinfer1::DataType getOutputDataType(int index, const nvinfer1::DataType* inputTypes, int nbInputs) const TRTNOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index, const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const TRTNOEXCEPT override;
   int initialize() TRTNOEXCEPT override;
   void terminate() TRTNOEXCEPT override;
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in, int nbInputs,
@@ -53,7 +66,8 @@ class CatSplitCachePlugin final : public nvinfer1::IPluginV2DynamicExt {
   const char* getPluginNamespace() const TRTNOEXCEPT override;
   int getNbOutputs() const TRTNOEXCEPT override;
 
-  void attachToContext(cudnnContext* cudnn, cublasContext* cublas, nvinfer1::IGpuAllocator* allocator) TRTNOEXCEPT override;
+  void attachToContext(cudnnContext* cudnn, cublasContext* cublas,
+                       nvinfer1::IGpuAllocator* allocator) TRTNOEXCEPT override;
   void detachFromContext() TRTNOEXCEPT override {}
 };
 
@@ -66,7 +80,8 @@ class CatSplitCachePluginCreator : public nvinfer1::IPluginCreator {
   const char* getPluginVersion() const TRTNOEXCEPT;
   const nvinfer1::PluginFieldCollection* getFieldNames() TRTNOEXCEPT;
   nvinfer1::IPluginV2DynamicExt* createPlugin(const char* name, const nvinfer1::PluginFieldCollection* fc) TRTNOEXCEPT;
-  nvinfer1::IPluginV2DynamicExt* deserializePlugin(const char* name, const void* serialData, size_t serialLength) TRTNOEXCEPT;
+  nvinfer1::IPluginV2DynamicExt* deserializePlugin(const char* name, const void* serialData,
+                                                   size_t serialLength) TRTNOEXCEPT;
 
   void setPluginNamespace(const char* libNamespace) TRTNOEXCEPT { m_namespace_ = libNamespace; }
 

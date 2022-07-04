@@ -30,12 +30,11 @@ constexpr const char* FMOE_EXPERT_NAME{"FMoEExpertPluginDynamic"};
 
 class FMoEExpertPlugin : public nvinfer1::IPluginV2DynamicExt {
  public:
-  FMoEExpertPlugin(const std::string& name, const nvinfer1::DataType type, const int num_expert,
-                   const int idim, const int hidden_units, const int act_type);
+  FMoEExpertPlugin(const std::string& name, const nvinfer1::DataType type, const int num_expert, const int idim,
+                   const int hidden_units, const int act_type);
 
-  FMoEExpertPlugin(const std::string& name, const nvinfer1::DataType type, const int num_expert,
-                   const int idim, const int hidden_units, const int act_type,
-                   std::shared_ptr<CudaStreamManager> cuda_stream_manager);
+  FMoEExpertPlugin(const std::string& name, const nvinfer1::DataType type, const int num_expert, const int idim,
+                   const int hidden_units, const int act_type, std::shared_ptr<CudaStreamManager> cuda_stream_manager);
 
   FMoEExpertPlugin(const std::string& name, const void* data, size_t length);
 
@@ -54,10 +53,12 @@ class FMoEExpertPlugin : public nvinfer1::IPluginV2DynamicExt {
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs, int nbInputs,
                           const nvinfer1::PluginTensorDesc* outputs, int nbOutputs) const TRTNOEXCEPT override;
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc, const nvinfer1::PluginTensorDesc* outputDesc,
-              const void* const* inputs, void* const* outputs, void* workspace, cudaStream_t stream) TRTNOEXCEPT override;
+              const void* const* inputs, void* const* outputs, void* workspace,
+              cudaStream_t stream) TRTNOEXCEPT override;
 
   // IPluginV2Ext Methods
-  nvinfer1::DataType getOutputDataType(int index, const nvinfer1::DataType* inputTypes, int nbInputs) const TRTNOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index, const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const TRTNOEXCEPT override;
 
   // IPluginV2 Methods
   const char* getPluginType() const TRTNOEXCEPT override;
@@ -81,28 +82,28 @@ class FMoEExpertPlugin : public nvinfer1::IPluginV2DynamicExt {
   int hidden_units_;
   int act_type_;
 
-  //WeightsWithOwnership w1_weight_;
-  //WeightsWithOwnership w1_bias_;
-  //WeightsWithOwnership w2_weight_;
-  //WeightsWithOwnership w2_bias_;
+  // WeightsWithOwnership w1_weight_;
+  // WeightsWithOwnership w1_bias_;
+  // WeightsWithOwnership w2_weight_;
+  // WeightsWithOwnership w2_bias_;
 
-  //cuda_unique_ptr<void> w1_weight_dev_ptr_;
-  //cuda_unique_ptr<void> w1_bias_dev_ptr_;
-  //cuda_unique_ptr<void> w2_weight_dev_ptr_;
-  //cuda_unique_ptr<void> w2_bias_dev_ptr_;
+  // cuda_unique_ptr<void> w1_weight_dev_ptr_;
+  // cuda_unique_ptr<void> w1_bias_dev_ptr_;
+  // cuda_unique_ptr<void> w2_weight_dev_ptr_;
+  // cuda_unique_ptr<void> w2_bias_dev_ptr_;
 
   std::shared_ptr<CudaStreamManager> cuda_stream_manager_;
   std::vector<int> v_acc_his_;
 
- //protected:
+  // protected:
   //// To prevent compiler warnings.
-  //using nvinfer1::IPluginV2DynamicExt::canBroadcastInputAcrossBatch;
-  //using nvinfer1::IPluginV2DynamicExt::configurePlugin;
-  //using nvinfer1::IPluginV2DynamicExt::enqueue;
-  //using nvinfer1::IPluginV2DynamicExt::getOutputDimensions;
-  //using nvinfer1::IPluginV2DynamicExt::getWorkspaceSize;
-  //using nvinfer1::IPluginV2DynamicExt::isOutputBroadcastAcrossBatch;
-  //using nvinfer1::IPluginV2DynamicExt::supportsFormat;
+  // using nvinfer1::IPluginV2DynamicExt::canBroadcastInputAcrossBatch;
+  // using nvinfer1::IPluginV2DynamicExt::configurePlugin;
+  // using nvinfer1::IPluginV2DynamicExt::enqueue;
+  // using nvinfer1::IPluginV2DynamicExt::getOutputDimensions;
+  // using nvinfer1::IPluginV2DynamicExt::getWorkspaceSize;
+  // using nvinfer1::IPluginV2DynamicExt::isOutputBroadcastAcrossBatch;
+  // using nvinfer1::IPluginV2DynamicExt::supportsFormat;
 };
 
 class FMoEExpertPluginCreator : public nvinfer1::IPluginCreator {
@@ -117,7 +118,8 @@ class FMoEExpertPluginCreator : public nvinfer1::IPluginCreator {
 
   nvinfer1::IPluginV2* createPlugin(const char* name, const nvinfer1::PluginFieldCollection* fc) TRTNOEXCEPT override;
 
-  nvinfer1::IPluginV2* deserializePlugin(const char* name, const void* serialData, size_t serialLength) TRTNOEXCEPT override;
+  nvinfer1::IPluginV2* deserializePlugin(const char* name, const void* serialData,
+                                         size_t serialLength) TRTNOEXCEPT override;
 
   void setPluginNamespace(const char* pluginNamespace) TRTNOEXCEPT override;
 

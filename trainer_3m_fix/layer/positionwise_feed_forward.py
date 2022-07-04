@@ -166,51 +166,47 @@ class LocalFmoeCatEmbedFeedForward(torch.nn.Module):
                                       # self.router_regularization))
         # return gate_idx, gate_value, aux_loss, all_samples
 
-    def gate_trt(self, network_helper, inputs):
+    def gate_trt(self, network_helper, inputs, mask):
         # print(self.router_weights.shape) 1024 32
         # print(inputs.shape) [-1, 1024]
-        weight = network_helper.addConstant(self.router_weights)
+
+        router_weights = self.router_weights.view(1, -1, self.num_experts)
+        weight = network_helper.addConstant(router_weights)
         router_logits = network_helper.addMatMul(inputs, weight)
         bias = None
         if self.router_bias is not None:
+            # self.router_weights = self.router_weights.view(1, -1, self.num_experts)
             bias = network_helper.addConstant(self.router_bias)
             router_logits = network_helper.addAdd(router_logits, bias)
 
-        # network_helper.markOutput(router_logits)
-        router_probs = network_helper.addSoftmax(router_logits, dim=-1)
+        plugin_creator = network_helper.plugin_registry.get_plugin_creator("SoftmaxTopKPluginDynamic", "1", "")
+        if not plugin_creator:
+            raise RuntimeError("Could not find SoftmaxTopKPluginDynamic")
 
-        network_helper.markOutput(router_probs)
-        gate_idx, gate_value = network_helper.addMax(router_probs, dim=-1)
+        # np_params = np.array([1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 2, 0], dtype=np.int32)
+        data_type = trt.PluginField("data_type", np.array([network_helper.config.plugin_data_type], dtype=np.int32), trt.PluginFieldType.INT32)
+        # hidden_units = trt.PluginField("hidden_units", np.array([self.hidden_units], dtype=np.int32), trt.PluginFieldType.INT32)
+
+        pfc = trt.PluginFieldCollection([data_type])
+        plugin = plugin_creator.create_plugin("plugin", pfc)
+        if not plugin:
+            raise RuntimeError("Could not create_plugin SoftmaxTopKPluginDynamic")
+
+        layer = network_helper.network.add_plugin_v2([router_logits, mask], plugin)
+
+        network_helper.set_layer_name(layer, "SoftmaxTopKPluginDynamic")
+        gate_value = layer.get_output(0)
+        gate_idx = layer.get_output(1)
+
+        # router_probs = network_helper.addSoftmax(router_logits, dim=-1)
+        # gate_idx, gate_value = network_helper.addMax(router_probs, dim=-1)
+
+        # network_helper.markOutput(router_probs)
+        # network_helper.markOutput(gate_value)
+        # gate_value = network_helper.addDumpTensor(gate_value)
         return gate_idx, gate_value
 
-    # def forward(self, inputs, embed):
-        # assert inputs.dim() == 3
-        # batch_size, max_steps, input_dim = inputs.size()
-        # inputs = inputs.view(-1, input_dim)
-        # embed_dim = embed.size(-1)
-        # embed = embed.view(-1, embed_dim)
-        # router_inputs = torch.cat([embed, inputs], dim=-1)
-        # gate_idx, gate_value, aux_loss, all_samples = self.gate(router_inputs)
-        # all_experts = self.num_experts * self.world_size
-        # capacity = int(self.capacity_factor * all_samples / all_experts)
-        # expert_outputs = _fmoe_general_global_forward(
-                # inputs, gate_idx, self.experts, self.num_experts,
-                # self.world_size, capacity=capacity, comm=self.comm)
-        # if not self.keep_expert_output:
-            # # print(router_inputs.shape)
-            # # print(gate_idx.shape)
-            # # print(expert_outputs.shape)
-            # # print(gate_value.shape)
-            # # print(gate_value.unsqueeze(1).shape)
-            # print(self.experts)
-            # print(self.experts.w_1.weight.shape)
-            # print(self.experts.w_1.bias.shape)
-            # assert 0
-            # expert_outputs = expert_outputs * gate_value.unsqueeze(1)
-        # output = expert_outputs.view(batch_size, max_steps, -1)
-        # return output, aux_loss
-
-    def forward(self, network_helper, inputs, embed):
+    def forward(self, network_helper, inputs, embed, mask):
         assert len(inputs.shape) == 3
 
         # batch_size = inputs.shape[0]
@@ -221,17 +217,18 @@ class LocalFmoeCatEmbedFeedForward(torch.nn.Module):
 
         # inputs = inputs.view(-1, input_dim)
         # embed = embed.view(-1, embed_dim)
-        base_inputs = inputs
-        inputs = network_helper.addReshape(inputs, [-1, input_dim])
-        embed = network_helper.addReshape(embed, [-1, embed_dim])
+        # base_inputs = inputs
+        # inputs = network_helper.addReshape(inputs, [-1, input_dim])
+        # embed = network_helper.addReshape(embed, [-1, embed_dim])
 
         # router_inputs = torch.cat([embed, inputs], dim=-1)
         router_inputs = network_helper.addCat([embed, inputs], dim=-1)
-        # network_helper.markOutput(router_inputs)
 
-        gate_idx, gate_value = self.gate_trt(network_helper, router_inputs)
-        # network_helper.markOutput(gate_value)
+        gate_idx, gate_value = self.gate_trt(network_helper, router_inputs, mask)
+        # gate_value = network_helper.addDumpTensor(gate_value)
         # return base_inputs
+        # import pdb
+        # pdb.set_trace()
 
         fmoe_creator = network_helper.plugin_registry.get_plugin_creator("FMoEExpertPluginDynamic", "1", "")
         if not fmoe_creator:
@@ -243,41 +240,26 @@ class LocalFmoeCatEmbedFeedForward(torch.nn.Module):
         idim = trt.PluginField("idim", np.array([self.idim], dtype=np.int32), trt.PluginFieldType.INT32)
         hidden_units = trt.PluginField("hidden_units", np.array([self.hidden_units], dtype=np.int32), trt.PluginFieldType.INT32)
 
-        # w1_weight = trt.PluginField("w1_weight", self.experts.w_1.weight.detach().numpy(), trt.PluginFieldType.FLOAT32)
-        # w1_bias = trt.PluginField("w1_bias", self.experts.w_1.bias.detach().numpy(), trt.PluginFieldType.FLOAT32)
-        # w2_weight = trt.PluginField("w2_weight", self.experts.w_2.weight.detach().numpy(), trt.PluginFieldType.FLOAT32)
-        # w2_bias = trt.PluginField("w2_bias", self.experts.w_2.bias.detach().numpy(), trt.PluginFieldType.FLOAT32)
-
         pfc = trt.PluginFieldCollection([data_type, num_expert, idim, hidden_units])
         plugin = fmoe_creator.create_plugin("plugin", pfc)
         if not plugin:
             raise RuntimeError("Could not create_plugin FMoEExpertPluginDynamic")
-
-        # import pdb
-        # pdb.set_trace()
 
         w1_weight = network_helper.addConstant(self.experts.w_1.weight)
         w1_bias = network_helper.addConstant(self.experts.w_1.bias)
         w2_weight = network_helper.addConstant(self.experts.w_2.weight)
         w2_bias = network_helper.addConstant(self.experts.w_2.bias)
         layer = network_helper.network.add_plugin_v2([inputs, gate_idx, w1_weight, w1_bias, w2_weight, w2_bias], plugin)
+
         network_helper.set_layer_name(layer, "FMoEExpertPluginDynamic")
         expert_outputs = layer.get_output(0)
 
-        # all_experts = self.num_experts * self.world_size
-        # capacity = int(self.capacity_factor * all_samples / all_experts)
-        # expert_outputs = _fmoe_general_global_forward(
-                # inputs, gate_idx, self.experts, self.num_experts,
-                # self.world_size, capacity=capacity, comm=self.comm)
-
         if not self.keep_expert_output:
-            # expert_outputs = expert_outputs * gate_value.unsqueeze(1)
             expert_outputs = network_helper.addProd(expert_outputs, gate_value)
             # expert_outputs = network_helper.addProd(inputs, gate_value)
 
+        output = expert_outputs
         # network_helper.markOutput(expert_outputs)
-        # network_helper.markOutput(gate_value)
-        gate_idx = network_helper.addDumpTensor(gate_idx)
         # output = expert_outputs.view(batch_size, max_steps, -1)
-        output = network_helper.addReshapeLike(expert_outputs, base_inputs)
+        # output = network_helper.addReshapeLike(expert_outputs, base_inputs)
         return output

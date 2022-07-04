@@ -23,7 +23,6 @@ int ComputeGlu(const int M, const int split_dim_size, const int N, const float* 
 int ComputeGlu(const int M, const int split_dim_size, const int N, const half* x_data, half* y_data,
                cudaStream_t stream);
 
-
 }  // namespace plugin
 }  // namespace nvinfer1
 #endif  // PLUGIN_GLU_PLUGIN_GLU_KERNEL_H_

@@ -43,7 +43,7 @@ int compute_mask_conv2d_sample(const int* input, const int batch, const int left
   mask_conv2d_sample_kernel<<<grid_size, block_size, 0, stream>>>(input, batch, left_padding, stride, output);
   auto ret = cudaPeekAtLastError();
   if (ret != cudaSuccess) {
-    gLogError << "mask_conv2d_sample_kernel failed! status = " << cudaGetErrorString(ret) << endl;
+    LOG(ERROR) << "mask_conv2d_sample_kernel failed! status = " << cudaGetErrorString(ret) << endl;
     return -1;
   }
   return 0;

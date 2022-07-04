@@ -53,8 +53,8 @@ DimsExprs LayerNormPlugin::getOutputDimensions(int outputIndex, const DimsExprs*
   return inputs[0];
 }
 
-bool LayerNormPlugin::supportsFormatCombination(int pos, const PluginTensorDesc* inOut,
-                                                int nbInputs, int nbOutputs) TRTNOEXCEPT {
+bool LayerNormPlugin::supportsFormatCombination(int pos, const PluginTensorDesc* inOut, int nbInputs,
+                                                int nbOutputs) TRTNOEXCEPT {
   assert(nbInputs == 3);
   assert(nbOutputs == 1);
 
@@ -76,7 +76,8 @@ size_t LayerNormPlugin::getWorkspaceSize(const PluginTensorDesc* inputs, int nbI
 }
 
 int LayerNormPlugin::enqueue(const PluginTensorDesc* inputDesc, const PluginTensorDesc* outputDesc,
-                             const void* const* inputs, void* const* outputs, void* workspace, cudaStream_t stream) TRTNOEXCEPT {
+                             const void* const* inputs, void* const* outputs, void* workspace,
+                             cudaStream_t stream) TRTNOEXCEPT {
   const int input_volume = volume(inputDesc[0].dims);
   const int S = input_volume / dim_;
 
@@ -139,9 +140,7 @@ void LayerNormPlugin::serialize(void* buffer) const TRTNOEXCEPT {
   serialize_value(&buffer, eps_);
 }
 
-void LayerNormPlugin::destroy() TRTNOEXCEPT {
-  delete this;
-}
+void LayerNormPlugin::destroy() TRTNOEXCEPT { delete this; }
 
 void LayerNormPlugin::setPluginNamespace(const char* libNamespace) TRTNOEXCEPT { namespace_ = libNamespace; }
 
@@ -161,7 +160,7 @@ const char* LayerNormPluginCreator::getPluginVersion() const TRTNOEXCEPT { retur
 const PluginFieldCollection* LayerNormPluginCreator::getFieldNames() TRTNOEXCEPT { return &FC_; }
 
 IPluginV2* LayerNormPluginCreator::createPlugin(const char* name, const PluginFieldCollection* fc) TRTNOEXCEPT {
-  gLogVerbose << "Creating LayerNormPlugin...\n";
+  LOG(INFO) << "Creating LayerNormPlugin...\n";
 
   int typeId = -1;
   int dim = 0;
@@ -171,31 +170,32 @@ IPluginV2* LayerNormPluginCreator::createPlugin(const char* name, const PluginFi
 
     if (field_name.compare("data_type") == 0) {
       typeId = *static_cast<const int*>(fc->fields[i].data);
-      gLogVerbose << "Building typeId: " << typeId << std::endl;
+      LOG(INFO) << "Building typeId: " << typeId << std::endl;
     }
     if (field_name.compare("eps") == 0) {
       eps = *static_cast<const float*>(fc->fields[i].data);
-      gLogVerbose << "Building eps: " << eps << std::endl;
+      LOG(INFO) << "Building eps: " << eps << std::endl;
     }
     if (field_name.compare("dim") == 0) {
       dim = *static_cast<const int*>(fc->fields[i].data);
-      gLogVerbose << "Building dim " << dim << std::endl;
+      LOG(INFO) << "Building dim " << dim << std::endl;
     }
   }
 
   if (typeId < 0 || typeId > 1) {
-    gLogError << "LayerNorm: invalid typeId " << typeId << std::endl;
+    LOG(ERROR) << "LayerNorm: invalid typeId " << typeId << std::endl;
     return nullptr;
   }
 
   DataType type = static_cast<DataType>(typeId);
 
-  gLogVerbose << "Building the Plugin...\n";
+  LOG(INFO) << "Building the Plugin...\n";
   LayerNormPlugin* p = new LayerNormPlugin(name, type, dim, eps);
   return p;
 }
 
-IPluginV2* LayerNormPluginCreator::deserializePlugin(const char* name, const void* serialData, size_t serialLength) TRTNOEXCEPT {
+IPluginV2* LayerNormPluginCreator::deserializePlugin(const char* name, const void* serialData,
+                                                     size_t serialLength) TRTNOEXCEPT {
   // This object will be deleted when the network is destroyed, which will
   // call LayerNormPlugin::destroy()
   return new LayerNormPlugin(name, serialData, serialLength);

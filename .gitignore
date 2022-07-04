@@ -34,3 +34,11 @@
 conformer_moe_18l/
 *.plan
 trtexec
+
+__pycache__/
+*.pyc
+logs/
+
+trainer_3m_fix_bk/
+plugin_bk/
+conformer_moe_18l

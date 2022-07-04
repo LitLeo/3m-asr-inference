@@ -85,7 +85,8 @@ void MaskedFillPlugin::configurePlugin(const nvinfer1::DynamicPluginTensorDesc* 
 // x = x * self.xscale
 // pos_emb = self.pe[:, offset:offset + seq_len]
 int MaskedFillPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc, const nvinfer1::PluginTensorDesc* outputDesc,
-                              const void* const* inputs, void* const* outputs, void* workspace, cudaStream_t stream) TRTNOEXCEPT {
+                              const void* const* inputs, void* const* outputs, void* workspace,
+                              cudaStream_t stream) TRTNOEXCEPT {
   auto batch = inputDesc[0].dims.d[0];
   auto dim = inputDesc[0].dims.d[1];
   auto seq_len = inputDesc[0].dims.d[2];
@@ -127,7 +128,8 @@ int MaskedFillPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc, const
 }
 
 nvinfer1::DimsExprs MaskedFillPlugin::getOutputDimensions(int outputIndex, const nvinfer1::DimsExprs* inputs,
-                                                          int nbInputs, nvinfer1::IExprBuilder& exprBuilder) TRTNOEXCEPT {
+                                                          int nbInputs,
+                                                          nvinfer1::IExprBuilder& exprBuilder) TRTNOEXCEPT {
   return inputs[0];
 }
 
@@ -135,9 +137,7 @@ nvinfer1::IPluginV2DynamicExt* MaskedFillPlugin::clone() const TRTNOEXCEPT {
   return new MaskedFillPlugin(layer_name_, data_type_, fill_);
 }
 
-void MaskedFillPlugin::destroy() TRTNOEXCEPT {
-  delete this;
-}
+void MaskedFillPlugin::destroy() TRTNOEXCEPT { delete this; }
 
 const char* MaskedFillPlugin::getPluginVersion() const TRTNOEXCEPT { return MASKED_FILL_PLUGIN_VERSION; }
 
@@ -153,7 +153,8 @@ const char* MaskedFillPlugin::getPluginNamespace() const TRTNOEXCEPT { return ""
 
 int MaskedFillPlugin::getNbOutputs() const TRTNOEXCEPT { return 1; }
 
-void MaskedFillPlugin::attachToContext(cudnnContext* cudnn, cublasContext* cublas, nvinfer1::IGpuAllocator* allocator) TRTNOEXCEPT {}
+void MaskedFillPlugin::attachToContext(cudnnContext* cudnn, cublasContext* cublas,
+                                       nvinfer1::IGpuAllocator* allocator) TRTNOEXCEPT {}
 
 const char* MaskedFillPluginCreator::getPluginName() const TRTNOEXCEPT { return MASKED_FILL_PLUGIN_NAME; }
 
@@ -164,11 +165,11 @@ const nvinfer1::PluginFieldCollection* MaskedFillPluginCreator::getFieldNames() 
   return nullptr;
 }
 
-nvinfer1::IPluginV2DynamicExt* MaskedFillPluginCreator::createPlugin(const char* name,
-                                                                     const nvinfer1::PluginFieldCollection* fc) TRTNOEXCEPT {
+nvinfer1::IPluginV2DynamicExt* MaskedFillPluginCreator::createPlugin(
+    const char* name, const nvinfer1::PluginFieldCollection* fc) TRTNOEXCEPT {
   assert(fc->nbFields == 2);
 
-  gLogVerbose << "Creating MaskedFillPlugin...\n";
+  LOG(INFO) << "Creating MaskedFillPlugin...\n";
 
   int data_type_id;
   float fill;
@@ -178,17 +179,17 @@ nvinfer1::IPluginV2DynamicExt* MaskedFillPluginCreator::createPlugin(const char*
 
     if (field_name.compare("data_type") == 0) {
       data_type_id = static_cast<const int*>(fc->fields[i].data)[0];
-      gLogVerbose << "Building data_type_id : " << data_type_id << std::endl;
+      LOG(INFO) << "Building data_type_id : " << data_type_id << std::endl;
     }
 
     if (field_name.compare("fill") == 0) {
       fill = static_cast<const float*>(fc->fields[i].data)[0];
-      gLogVerbose << "Building fill: " << fill << std::endl;
+      LOG(INFO) << "Building fill: " << fill << std::endl;
     }
   }
 
   if (data_type_id < 0 || data_type_id > 3) {
-    gLogError << "Invalid type id" << data_type_id << std::endl;
+    LOG(ERROR) << "Invalid type id" << data_type_id << std::endl;
     assert(0);
   }
 
